@@ -1,0 +1,8 @@
+{
+  "extends": "@sentralyzed/config/typescript/node",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@sentralyzed/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types/*": "./src/types/*.ts",
+    "./validators/*": "./src/validators/*.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@sentralyzed/config": "*",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "eslint": "^9.0.0",
+    "vitest": "^3.0.0"
+  }
+}
