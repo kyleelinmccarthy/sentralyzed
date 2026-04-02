@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, integer, customType } from 'drizzle-orm/pg-core'
-import { timestamps, softDelete } from './_helpers.js'
-import { users } from './users.js'
+import { timestamps, softDelete } from './_helpers'
+import { users } from './users'
 
 const bytea = customType<{ data: Buffer; driverParam: Buffer }>({
   dataType() {

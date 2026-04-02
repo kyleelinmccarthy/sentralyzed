@@ -9,8 +9,8 @@ import {
   timestamp,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
-import { timestamps, softDelete } from './_helpers.js'
-import { users } from './users.js'
+import { timestamps, softDelete } from './_helpers'
+import { users } from './users'
 
 export const forumCategories = pgTable('forum_categories', {
   id: uuid('id').primaryKey().defaultRandom(),

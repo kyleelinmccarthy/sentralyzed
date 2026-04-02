@@ -7,7 +7,7 @@ import {
   pgEnum,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
-import { timestamps } from './_helpers.js'
+import { timestamps } from './_helpers'
 
 export const authProviderEnum = pgEnum('auth_provider', ['email', 'google'])
 export const roleEnum = pgEnum('role', ['admin', 'manager', 'member'])

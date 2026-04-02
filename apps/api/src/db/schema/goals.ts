@@ -8,8 +8,8 @@ import {
   pgEnum,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
-import { timestamps, softDelete } from './_helpers.js'
-import { users } from './users.js'
+import { timestamps, softDelete } from './_helpers'
+import { users } from './users'
 
 export const goalLevelEnum = pgEnum('goal_level', ['company', 'team', 'personal'])
 export const goalStatusEnum = pgEnum('goal_status', [

@@ -24,14 +24,18 @@
     "cookie": "^1.1.1",
     "drizzle-orm": "^0.38.0",
     "googleapis": "^171.4.0",
+    "helmet": "^8.1.0",
     "hono": "^4.7.0",
+    "ioredis": "^5.10.1",
     "postgres": "^3.4.0",
+    "ws": "^8.20.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@sentralyzed/config": "*",
     "@types/cookie": "^0.6.0",
     "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.30.0",
     "eslint": "^9.0.0",
     "tsx": "^4.19.0",

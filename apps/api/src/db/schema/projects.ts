@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, text, integer, pgEnum, timestamp } from 'drizzle-orm/pg-core'
-import { timestamps, softDelete } from './_helpers.js'
-import { users } from './users.js'
-import { goals } from './goals.js'
+import { timestamps, softDelete } from './_helpers'
+import { users } from './users'
+import { goals } from './goals'
 
 export const projectStatusEnum = pgEnum('project_status', [
   'active',

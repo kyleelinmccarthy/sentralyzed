@@ -9,8 +9,8 @@ import {
   time,
   pgEnum,
 } from 'drizzle-orm/pg-core'
-import { timestamps } from './_helpers.js'
-import { users } from './users.js'
+import { timestamps } from './_helpers'
+import { users } from './users'
 
 export const rsvpStatusEnum = pgEnum('rsvp_status', ['pending', 'accepted', 'declined'])
 

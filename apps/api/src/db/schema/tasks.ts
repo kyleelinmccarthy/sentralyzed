@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, text, integer, date, jsonb, pgEnum } from 'drizzle-orm/pg-core'
-import { timestamps, softDelete } from './_helpers.js'
-import { users } from './users.js'
-import { projects } from './projects.js'
+import { timestamps, softDelete } from './_helpers'
+import { users } from './users'
+import { projects } from './projects'
 
 export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'in_review', 'done'])
 

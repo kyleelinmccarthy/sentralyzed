@@ -7,7 +7,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export function Card({ className = '', gradient, children, ...props }: CardProps) {
   return (
     <div
-      className={`bg-white rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] ${className}`}
+      className={`bg-white dark:bg-dark-card rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)] ${className}`}
       style={gradient ? { background: gradient } : undefined}
       {...props}
     >

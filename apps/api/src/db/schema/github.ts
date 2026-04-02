@@ -1,8 +1,8 @@
 import { pgTable, uuid, varchar, text, jsonb, timestamp, bigint } from 'drizzle-orm/pg-core'
-import { timestamps } from './_helpers.js'
-import { users } from './users.js'
-import { projects } from './projects.js'
-import { tasks } from './tasks.js'
+import { timestamps } from './_helpers'
+import { users } from './users'
+import { projects } from './projects'
+import { tasks } from './tasks'
 
 export const githubConnections = pgTable('github_connections', {
   id: uuid('id').primaryKey().defaultRandom(),

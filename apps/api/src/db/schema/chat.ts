@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, text, timestamp, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core'
-import { timestamps } from './_helpers.js'
-import { users } from './users.js'
-import { projects } from './projects.js'
+import { timestamps } from './_helpers'
+import { users } from './users'
+import { projects } from './projects'
 
 export const channelTypeEnum = pgEnum('channel_type', ['public', 'private', 'direct'])
 
