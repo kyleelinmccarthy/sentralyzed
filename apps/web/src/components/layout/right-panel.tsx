@@ -2,14 +2,17 @@
 
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <Card className="p-3">
+    <Card className="p-3.5">
       <p className="text-2xl font-bold" style={{ color }}>
         {value}
       </p>
-      <p className="text-xs text-french-gray mt-1">{label}</p>
+      <p className="text-[11px] text-french-gray dark:text-dark-text-secondary mt-1 font-medium">
+        {label}
+      </p>
     </Card>
   )
 }
@@ -33,34 +36,34 @@ function MiniCalendar() {
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">{month}</h3>
-        <div className="flex items-center gap-1">
+        <h3 className="font-semibold text-sm text-jet dark:text-dark-text">{month}</h3>
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => setOffset(offset - 1)}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-dark-card text-slate-gray dark:text-dark-text-secondary text-sm transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover text-french-gray dark:text-dark-text-secondary transition-colors"
           >
-            &lt;
+            <ChevronLeft size={14} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setOffset(offset + 1)}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-dark-card text-slate-gray dark:text-dark-text-secondary text-sm transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover text-french-gray dark:text-dark-text-secondary transition-colors"
           >
-            &gt;
+            <ChevronRight size={14} strokeWidth={1.5} />
           </button>
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs">
         {days.map((d) => (
-          <div key={d} className="text-french-gray font-medium py-1">
+          <div key={d} className="text-french-gray dark:text-dark-text-secondary font-medium py-1">
             {d}
           </div>
         ))}
         {cells.map((day, i) => (
           <div
             key={i}
-            className={`py-1 rounded
-              ${day === today ? 'bg-indigo text-white font-bold' : ''}
-              ${day ? 'hover:bg-gray-100 dark:hover:bg-dark-card cursor-pointer' : ''}
+            className={`py-1 rounded-md text-[12px]
+              ${day === today ? 'bg-indigo text-white font-semibold' : 'text-jet dark:text-dark-text'}
+              ${day && day !== today ? 'hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer' : ''}
             `}
           >
             {day || ''}
@@ -73,8 +76,10 @@ function MiniCalendar() {
 
 export function RightPanel() {
   return (
-    <aside className="w-[320px] fixed right-0 top-0 h-screen overflow-y-auto p-4 bg-gray-50 dark:bg-dark-bg border-l border-gray-200 dark:border-dark-border">
-      <h2 className="text-sm font-semibold text-jet dark:text-dark-text mb-4">Quick Stats</h2>
+    <aside className="w-[320px] fixed right-0 top-0 h-screen overflow-y-auto p-5 bg-light-bg dark:bg-dark-bg border-l border-light-border dark:border-dark-border">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-french-gray dark:text-dark-text-secondary mb-4">
+        Quick Stats
+      </h2>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
         <StatCard label="Planned Today" value={0} color="#5C6BC0" />

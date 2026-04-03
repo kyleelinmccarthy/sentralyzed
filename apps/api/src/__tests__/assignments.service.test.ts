@@ -1,0 +1,170 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const mockInsert = vi.fn()
+const mockDelete = vi.fn()
+const mockUpdate = vi.fn()
+const mockFindMany = vi.fn()
+const mockFindFirst = vi.fn()
+
+const mockActivityLog = vi.fn().mockResolvedValue({ id: 'activity-1' })
+
+vi.mock('../services/activities.service.js', () => ({
+  activitiesService: {
+    log: mockActivityLog,
+  },
+}))
+
+vi.mock('../db/index.js', () => ({
+  db: {
+    insert: mockInsert,
+    delete: mockDelete,
+    update: mockUpdate,
+    query: {
+      entityAssignments: {
+        findMany: mockFindMany,
+        findFirst: mockFindFirst,
+      },
+    },
+  },
+}))
+
+const { AssignmentsService } = await import('../services/assignments.service.js')
+
+describe('AssignmentsService', () => {
+  let service: InstanceType<typeof AssignmentsService>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    service = new AssignmentsService()
+  })
+
+  describe('assign', () => {
+    it('inserts an assignment and returns it', async () => {
+      const assignment = {
+        id: 'assign-1',
+        entityType: 'task',
+        entityId: 'task-1',
+        userId: 'user-2',
+        role: 'assignee',
+        assignedBy: 'user-1',
+        createdAt: new Date(),
+      }
+      const returning = vi.fn().mockResolvedValue([assignment])
+      const values = vi
+        .fn()
+        .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) })
+      mockInsert.mockReturnValue({ values })
+
+      const result = await service.assign({
+        entityType: 'task',
+        entityId: 'task-1',
+        userId: 'user-2',
+        role: 'assignee',
+        assignedBy: 'user-1',
+      })
+
+      expect(result).toEqual(assignment)
+      expect(mockInsert).toHaveBeenCalled()
+    })
+
+    it('returns null when duplicate assignment exists', async () => {
+      const returning = vi.fn().mockResolvedValue([])
+      const values = vi
+        .fn()
+        .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) })
+      mockInsert.mockReturnValue({ values })
+
+      const result = await service.assign({
+        entityType: 'task',
+        entityId: 'task-1',
+        userId: 'user-2',
+        assignedBy: 'user-1',
+      })
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('findByEntity', () => {
+    it('returns assignments for an entity', async () => {
+      const assignments = [
+        {
+          id: 'assign-1',
+          entityType: 'task',
+          entityId: 'task-1',
+          userId: 'user-2',
+          role: 'assignee',
+        },
+      ]
+      mockFindMany.mockResolvedValue(assignments)
+
+      const result = await service.findByEntity('task', 'task-1')
+
+      expect(result).toEqual(assignments)
+      expect(mockFindMany).toHaveBeenCalled()
+    })
+  })
+
+  describe('findByUser', () => {
+    it('returns all assignments for a user', async () => {
+      const assignments = [
+        { id: 'assign-1', entityType: 'task', entityId: 'task-1', userId: 'user-2' },
+        { id: 'assign-2', entityType: 'project', entityId: 'proj-1', userId: 'user-2' },
+      ]
+      mockFindMany.mockResolvedValue(assignments)
+
+      const result = await service.findByUser('user-2')
+
+      expect(result).toEqual(assignments)
+      expect(mockFindMany).toHaveBeenCalled()
+    })
+  })
+
+  describe('updateRole', () => {
+    it('updates the role and returns the assignment', async () => {
+      const updated = { id: 'assign-1', role: 'reviewer' }
+      const returning = vi.fn().mockResolvedValue([updated])
+      const where = vi.fn().mockReturnValue({ returning })
+      const set = vi.fn().mockReturnValue({ where })
+      mockUpdate.mockReturnValue({ set })
+
+      const result = await service.updateRole('assign-1', 'reviewer')
+
+      expect(result).toEqual(updated)
+      expect(mockUpdate).toHaveBeenCalled()
+    })
+
+    it('returns undefined when assignment not found', async () => {
+      const returning = vi.fn().mockResolvedValue([])
+      const where = vi.fn().mockReturnValue({ returning })
+      const set = vi.fn().mockReturnValue({ where })
+      mockUpdate.mockReturnValue({ set })
+
+      const result = await service.updateRole('nonexistent', 'reviewer')
+
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('remove', () => {
+    it('deletes the assignment when it exists', async () => {
+      mockFindFirst.mockResolvedValue({ id: 'assign-1' })
+      const where = vi.fn().mockResolvedValue(undefined)
+      mockDelete.mockReturnValue({ where })
+
+      const result = await service.remove('assign-1')
+
+      expect(result).toBe(true)
+      expect(mockDelete).toHaveBeenCalled()
+    })
+
+    it('returns false when assignment does not exist', async () => {
+      mockFindFirst.mockResolvedValue(undefined)
+
+      const result = await service.remove('nonexistent')
+
+      expect(result).toBe(false)
+      expect(mockDelete).not.toHaveBeenCalled()
+    })
+  })
+})

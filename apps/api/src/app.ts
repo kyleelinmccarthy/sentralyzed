@@ -14,6 +14,9 @@ import { chatRouter } from './routes/chat/index.js'
 import { forumsRouter } from './routes/forums/index.js'
 import { githubRouter } from './routes/github/index.js'
 import { calendarRouter } from './routes/calendar/index.js'
+import { feedbackRouter } from './routes/feedback/index.js'
+import { assignmentsRouter } from './routes/assignments/index.js'
+import { whiteboardsRouter } from './routes/whiteboards/index.js'
 
 export const app = new Hono()
 
@@ -54,3 +57,6 @@ app.route('/chat', chatRouter)
 app.route('/forums', forumsRouter)
 app.route('/github', githubRouter)
 app.route('/calendar', calendarRouter)
+app.route('/feedback', feedbackRouter)
+app.route('/assignments', assignmentsRouter)
+app.route('/whiteboards', whiteboardsRouter)

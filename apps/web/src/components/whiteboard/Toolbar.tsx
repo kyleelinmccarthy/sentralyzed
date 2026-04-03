@@ -1,16 +1,33 @@
 'use client'
 
-import type { ToolType } from '@/lib/whiteboard/engine'
+import type {
+  ToolType,
+  StrokeStyle,
+  FontFamily,
+  FontSize,
+  TextAlign,
+  ReorderDirection,
+} from '@/lib/whiteboard/engine'
 
 interface ToolbarProps {
   activeTool: ToolType
   color: string
   strokeWidth: number
   fill: string
+  strokeStyle: StrokeStyle
+  opacity: number
+  fontFamily: FontFamily
+  fontSize: FontSize
+  textAlign: TextAlign
   onToolChange: (tool: ToolType) => void
   onColorChange: (color: string) => void
   onStrokeWidthChange: (width: number) => void
   onFillChange: (fill: string) => void
+  onStrokeStyleChange: (style: StrokeStyle) => void
+  onOpacityChange: (opacity: number) => void
+  onFontFamilyChange: (family: FontFamily) => void
+  onFontSizeChange: (size: FontSize) => void
+  onTextAlignChange: (align: TextAlign) => void
   onUndo: () => void
   onRedo: () => void
   canUndo: boolean
@@ -18,21 +35,24 @@ interface ToolbarProps {
   zoom: number
   onZoomChange: (zoom: number) => void
   onPanReset: () => void
+  hasSelection: boolean
+  onReorder: (direction: ReorderDirection) => void
 }
 
-const tools: { type: ToolType; label: string; icon: string }[] = [
-  { type: 'select', label: 'Select', icon: '↖' },
-  { type: 'hand', label: 'Hand (Pan)', icon: '✋' },
-  { type: 'rectangle', label: 'Rectangle', icon: '▭' },
-  { type: 'ellipse', label: 'Ellipse', icon: '◯' },
-  { type: 'line', label: 'Line', icon: '╱' },
-  { type: 'arrow', label: 'Arrow', icon: '→' },
-  { type: 'freehand', label: 'Draw', icon: '✎' },
-  { type: 'text', label: 'Text', icon: 'T' },
-  { type: 'eraser', label: 'Eraser', icon: '⌫' },
+const tools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
+  { type: 'select', label: 'Select', icon: '↖', shortcut: 'V' },
+  { type: 'hand', label: 'Hand (Pan)', icon: '✋', shortcut: 'H' },
+  { type: 'rectangle', label: 'Rectangle', icon: '▭', shortcut: 'R' },
+  { type: 'diamond', label: 'Diamond', icon: '◇', shortcut: 'D' },
+  { type: 'ellipse', label: 'Ellipse', icon: '◯', shortcut: 'O' },
+  { type: 'line', label: 'Line', icon: '╱', shortcut: 'L' },
+  { type: 'arrow', label: 'Arrow', icon: '→', shortcut: 'A' },
+  { type: 'freehand', label: 'Draw', icon: '✎', shortcut: 'P' },
+  { type: 'text', label: 'Text', icon: 'T', shortcut: 'T' },
+  { type: 'eraser', label: 'Eraser', icon: '⌫', shortcut: 'E' },
 ]
 
-const colors = [
+const strokeColors = [
   '#333333',
   '#5C6BC0',
   '#E53935',
@@ -43,100 +63,307 @@ const colors = [
   '#FFFFFF',
 ]
 
-export function Toolbar(props: ToolbarProps) {
+const fillColors = [
+  'transparent',
+  '#D1C4E9',
+  '#FFCDD2',
+  '#B2DFDB',
+  '#FFE0B2',
+  '#E1BEE7',
+  '#CFD8DC',
+  '#FFFFFF',
+]
+
+const strokeStyles: { value: StrokeStyle; label: string; preview: string }[] = [
+  { value: 'solid', label: 'Solid', preview: '—' },
+  { value: 'dashed', label: 'Dashed', preview: '- -' },
+  { value: 'dotted', label: 'Dotted', preview: '···' },
+]
+
+const fontFamilies: { value: FontFamily; label: string; icon: string }[] = [
+  { value: 'hand', label: 'Handwritten', icon: '✏' },
+  { value: 'serif', label: 'Serif', icon: 'A' },
+  { value: 'mono', label: 'Code', icon: '</>' },
+  { value: 'sans', label: 'Sans-serif', icon: 'A' },
+]
+
+const fontSizes: FontSize[] = ['S', 'M', 'L', 'XL']
+
+const textAligns: { value: TextAlign; icon: string; label: string }[] = [
+  { value: 'left', icon: '≡', label: 'Align left' },
+  { value: 'center', icon: '≡', label: 'Align center' },
+  { value: 'right', icon: '≡', label: 'Align right' },
+]
+
+function Divider() {
+  return <div className="w-px h-6 bg-gray-200 mx-1" />
+}
+
+function ToggleButton({
+  active,
+  onClick,
+  title,
+  children,
+  className = '',
+}: {
+  active: boolean
+  onClick: () => void
+  title: string
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2 z-10">
-      {/* Tools */}
-      {tools.map((tool) => (
-        <button
-          key={tool.type}
-          onClick={() => props.onToolChange(tool.type)}
-          title={tool.label}
-          className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors
-            ${props.activeTool === tool.type ? 'bg-indigo text-white' : 'hover:bg-gray-100 text-jet'}`}
+    <button
+      onClick={onClick}
+      title={title}
+      className={`px-1.5 py-1 text-xs rounded transition-colors
+        ${active ? 'bg-indigo/10 text-indigo font-medium' : 'text-french-gray hover:bg-gray-100'} ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function Toolbar(props: ToolbarProps) {
+  const isTextTool = props.activeTool === 'text'
+
+  return (
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+      {/* Main toolbar row */}
+      <div className="bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2">
+        {/* Tools */}
+        {tools.map((tool) => (
+          <button
+            key={tool.type}
+            onClick={() => props.onToolChange(tool.type)}
+            title={`${tool.label} (${tool.shortcut})`}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors
+              ${props.activeTool === tool.type ? 'bg-indigo text-white' : 'hover:bg-gray-100 text-jet'}`}
+          >
+            {tool.icon}
+          </button>
+        ))}
+
+        <Divider />
+
+        {/* Stroke color */}
+        <span className="text-[10px] text-french-gray">Stroke</span>
+        {strokeColors.map((c) => (
+          <button
+            key={`s-${c}`}
+            onClick={() => props.onColorChange(c)}
+            className={`w-6 h-6 rounded-full border-2 ${props.color === c ? 'border-indigo' : 'border-gray-200'}`}
+            style={{ backgroundColor: c }}
+            title={`Stroke: ${c}`}
+          />
+        ))}
+
+        <Divider />
+
+        {/* Background color */}
+        <span className="text-[10px] text-french-gray">Bg</span>
+        {fillColors.map((c) => (
+          <button
+            key={`f-${c}`}
+            onClick={() => props.onFillChange(c)}
+            className={`w-6 h-6 rounded-full border-2 ${props.fill === c ? 'border-indigo' : 'border-gray-200'}`}
+            style={{
+              backgroundColor: c === 'transparent' ? undefined : c,
+              backgroundImage:
+                c === 'transparent'
+                  ? 'linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%), linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%)'
+                  : undefined,
+              backgroundSize: c === 'transparent' ? '6px 6px' : undefined,
+              backgroundPosition: c === 'transparent' ? '0 0, 3px 3px' : undefined,
+            }}
+            title={c === 'transparent' ? 'No fill' : `Background: ${c}`}
+          />
+        ))}
+
+        <Divider />
+
+        {/* Stroke width */}
+        <select
+          value={props.strokeWidth}
+          onChange={(e) => props.onStrokeWidthChange(Number(e.target.value))}
+          className="text-xs border border-gray-200 rounded px-1 py-1"
+          title="Stroke width"
         >
-          {tool.icon}
-        </button>
-      ))}
+          <option value={1}>1px</option>
+          <option value={2}>2px</option>
+          <option value={4}>4px</option>
+          <option value={8}>8px</option>
+        </select>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+        {/* Stroke style */}
+        <div className="flex items-center gap-0.5">
+          {strokeStyles.map((s) => (
+            <ToggleButton
+              key={s.value}
+              active={props.strokeStyle === s.value}
+              onClick={() => props.onStrokeStyleChange(s.value)}
+              title={s.label}
+            >
+              {s.preview}
+            </ToggleButton>
+          ))}
+        </div>
 
-      {/* Colors */}
-      {colors.map((c) => (
+        <Divider />
+
+        {/* Opacity */}
+        <div className="flex items-center gap-1" title={`Opacity: ${props.opacity}%`}>
+          <input
+            type="range"
+            min={10}
+            max={100}
+            step={5}
+            value={props.opacity}
+            onChange={(e) => props.onOpacityChange(Number(e.target.value))}
+            className="w-16 h-1 accent-indigo"
+          />
+          <span className="text-[10px] text-french-gray w-6">{props.opacity}%</span>
+        </div>
+
+        <Divider />
+
+        {/* Undo/Redo */}
         <button
-          key={c}
-          onClick={() => props.onColorChange(c)}
-          className={`w-6 h-6 rounded-full border-2 ${props.color === c ? 'border-indigo' : 'border-gray-200'}`}
-          style={{ backgroundColor: c }}
-        />
-      ))}
+          onClick={props.onUndo}
+          disabled={!props.canUndo}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
+          title="Undo (Ctrl+Z)"
+        >
+          ↩
+        </button>
+        <button
+          onClick={props.onRedo}
+          disabled={!props.canRedo}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          ↪
+        </button>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+        <Divider />
 
-      {/* Stroke width */}
-      <select
-        value={props.strokeWidth}
-        onChange={(e) => props.onStrokeWidthChange(Number(e.target.value))}
-        className="text-xs border border-gray-200 rounded px-1 py-1"
-      >
-        <option value={1}>1px</option>
-        <option value={2}>2px</option>
-        <option value={4}>4px</option>
-        <option value={8}>8px</option>
-      </select>
+        {/* Zoom */}
+        <button
+          onClick={() => props.onZoomChange(Math.min(props.zoom * 1.2, 10))}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          onClick={props.onPanReset}
+          className="px-1 py-1 text-xs rounded hover:bg-gray-100 min-w-[3rem] text-center"
+          title="Reset view"
+        >
+          {Math.round(props.zoom * 100)}%
+        </button>
+        <button
+          onClick={() => props.onZoomChange(Math.max(props.zoom / 1.2, 0.1))}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
+          title="Zoom out"
+        >
+          −
+        </button>
+      </div>
 
-      {/* Fill toggle */}
-      <button
-        onClick={() =>
-          props.onFillChange(props.fill === 'transparent' ? props.color + '33' : 'transparent')
-        }
-        className={`px-2 py-1 text-xs rounded ${props.fill !== 'transparent' ? 'bg-indigo/10 text-indigo' : 'text-french-gray'}`}
-      >
-        Fill
-      </button>
+      {/* Text options (shown when text tool is active) */}
+      {isTextTool && (
+        <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
+          {/* Font family */}
+          <span className="text-[10px] text-french-gray">Font</span>
+          <div className="flex items-center gap-0.5">
+            {fontFamilies.map((f) => (
+              <ToggleButton
+                key={f.value}
+                active={props.fontFamily === f.value}
+                onClick={() => props.onFontFamilyChange(f.value)}
+                title={f.label}
+                className={
+                  f.value === 'hand' ? 'italic' : f.value === 'mono' ? 'font-mono text-[10px]' : ''
+                }
+              >
+                {f.icon}
+              </ToggleButton>
+            ))}
+          </div>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+          <Divider />
 
-      {/* Undo/Redo */}
-      <button
-        onClick={props.onUndo}
-        disabled={!props.canUndo}
-        className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
-      >
-        ↩
-      </button>
-      <button
-        onClick={props.onRedo}
-        disabled={!props.canRedo}
-        className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
-      >
-        ↪
-      </button>
+          {/* Font size */}
+          <span className="text-[10px] text-french-gray">Size</span>
+          <div className="flex items-center gap-0.5">
+            {fontSizes.map((s) => (
+              <ToggleButton
+                key={s}
+                active={props.fontSize === s}
+                onClick={() => props.onFontSizeChange(s)}
+                title={`Font size: ${s}`}
+              >
+                {s}
+              </ToggleButton>
+            ))}
+          </div>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+          <Divider />
 
-      {/* Zoom */}
-      <button
-        onClick={() => props.onZoomChange(Math.min(props.zoom * 1.2, 10))}
-        className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
-        title="Zoom in"
-      >
-        +
-      </button>
-      <button
-        onClick={props.onPanReset}
-        className="px-1 py-1 text-xs rounded hover:bg-gray-100 min-w-[3rem] text-center"
-        title="Reset view"
-      >
-        {Math.round(props.zoom * 100)}%
-      </button>
-      <button
-        onClick={() => props.onZoomChange(Math.max(props.zoom / 1.2, 0.1))}
-        className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
-        title="Zoom out"
-      >
-        −
-      </button>
+          {/* Text align */}
+          <div className="flex items-center gap-0.5">
+            {textAligns.map((a) => (
+              <ToggleButton
+                key={a.value}
+                active={props.textAlign === a.value}
+                onClick={() => props.onTextAlignChange(a.value)}
+                title={a.label}
+              >
+                <span className="block w-4 leading-[3px] text-[6px]" style={{ textAlign: a.value }}>
+                  {'——\n'}
+                  {a.value === 'left' ? '—' : a.value === 'center' ? ' —' : '  ——'}
+                </span>
+              </ToggleButton>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Layer controls (shown when shapes are selected) */}
+      {props.hasSelection && (
+        <div className="bg-white rounded-lg shadow-lg flex items-center gap-1 px-2 py-1">
+          <span className="text-[10px] text-french-gray mr-1">Layers</span>
+          <button
+            onClick={() => props.onReorder('back')}
+            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
+            title="Send to back"
+          >
+            ⇊
+          </button>
+          <button
+            onClick={() => props.onReorder('backward')}
+            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
+            title="Send backward"
+          >
+            ↓
+          </button>
+          <button
+            onClick={() => props.onReorder('forward')}
+            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
+            title="Bring forward"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => props.onReorder('front')}
+            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
+            title="Bring to front"
+          >
+            ⇈
+          </button>
+        </div>
+      )}
     </div>
   )
 }

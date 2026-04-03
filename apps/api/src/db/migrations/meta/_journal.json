@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1775253761237,
+      "tag": "0000_naive_rocket_raccoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775254533267,
+      "tag": "0001_new_cloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775254861780,
+      "tag": "0002_slippery_thena",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775255005061,
+      "tag": "0003_perpetual_stardust",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775255068905,
+      "tag": "0004_last_stone_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775340000000,
+      "tag": "0005_add_poll_context_types",
+      "breakpoints": true
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { api } from '@/lib/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
 
 interface Goal {
   id: string
@@ -32,21 +33,29 @@ const levelLabels: Record<string, string> = {
 }
 
 function GoalItem({ goal, depth = 0 }: { goal: Goal; depth?: number }) {
+  const [expanded, setExpanded] = useState(false)
+
   return (
-    <div className="border-b border-gray-100 last:border-0" style={{ paddingLeft: depth * 24 }}>
-      <div className="flex items-center gap-3 py-3 px-4">
+    <div
+      className="border-b border-light-border dark:border-dark-border last:border-0"
+      style={{ paddingLeft: depth * 24 }}
+    >
+      <div
+        className="flex items-center gap-3 py-3 px-4 cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
         <span
           className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: statusColors[goal.status] }}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-jet truncate">{goal.title}</p>
-          <p className="text-xs text-french-gray">
+          <p className="text-sm font-medium text-jet dark:text-dark-text truncate">{goal.title}</p>
+          <p className="text-xs text-french-gray dark:text-dark-text-secondary">
             {levelLabels[goal.level]} · {goal.status.replace('_', ' ')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-24 h-2 bg-light-border dark:bg-dark-border rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -55,9 +64,21 @@ function GoalItem({ goal, depth = 0 }: { goal: Goal; depth?: number }) {
               }}
             />
           </div>
-          <span className="text-xs text-french-gray w-8">{goal.progressPercentage}%</span>
+          <span className="text-xs text-french-gray dark:text-dark-text-secondary w-8">
+            {goal.progressPercentage}%
+          </span>
+          <span className="text-xs text-french-gray dark:text-dark-text-secondary">
+            {expanded ? '▲' : '▼'}
+          </span>
         </div>
       </div>
+      {expanded && (
+        <div className="px-4 pb-3">
+          <div className="p-3 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border">
+            <UserAssignmentPicker entityType="goal" entityId={goal.id} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -91,13 +112,17 @@ export default function GoalsPage() {
   }
 
   if (isLoading) {
-    return <div className="animate-pulse text-french-gray">Loading goals...</div>
+    return (
+      <div className="animate-pulse text-french-gray dark:text-dark-text-secondary">
+        Loading goals...
+      </div>
+    )
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-jet">Goals</h1>
+        <h1 className="text-2xl font-bold text-jet dark:text-dark-text">Goals</h1>
         <Button onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : 'New Goal'}</Button>
       </div>
 
@@ -113,7 +138,7 @@ export default function GoalsPage() {
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value as 'company' | 'team' | 'personal')}
-              className="px-3 py-2 border border-french-gray rounded-[8px] text-sm"
+              className="px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm"
             >
               <option value="personal">Personal</option>
               <option value="team">Team</option>
@@ -126,7 +151,7 @@ export default function GoalsPage() {
 
       <Card>
         {goals.length === 0 ? (
-          <p className="p-6 text-sm text-french-gray text-center">
+          <p className="p-6 text-sm text-french-gray dark:text-dark-text-secondary text-center">
             No goals yet. Create one to get started.
           </p>
         ) : (

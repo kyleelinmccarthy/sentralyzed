@@ -5,6 +5,7 @@ import { api } from '@/lib/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
 
 interface Project {
   id: string
@@ -65,16 +66,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (!project) {
-    return <div className="animate-pulse text-french-gray">Loading...</div>
+    return (
+      <div className="animate-pulse text-french-gray dark:text-dark-text-secondary">Loading...</div>
+    )
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-jet">{project.name}</h1>
+          <h1 className="text-2xl font-bold text-jet dark:text-dark-text">{project.name}</h1>
           {project.description ? (
-            <p className="text-sm text-french-gray mt-1">{project.description}</p>
+            <p className="text-sm text-french-gray dark:text-dark-text-secondary mt-1">
+              {project.description}
+            </p>
           ) : null}
         </div>
         <div className="flex gap-2">
@@ -94,6 +99,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </Button>
         </div>
       </div>
+
+      {/* Assigned Users */}
+      <Card className="p-4 mb-6">
+        <UserAssignmentPicker entityType="project" entityId={id} />
+      </Card>
 
       {/* Quick add task */}
       <Card className="p-3 mb-6">
@@ -117,11 +127,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <div key={status} className="space-y-2">
               <h3 className="text-sm font-semibold text-slate-gray px-1">
                 {statusLabels[status]}{' '}
-                <span className="text-french-gray">
+                <span className="text-french-gray dark:text-dark-text-secondary">
                   ({tasks.filter((t) => t.status === status).length})
                 </span>
               </h3>
-              <div className="space-y-2 min-h-[200px] bg-gray-100/50 rounded-[12px] p-2">
+              <div className="space-y-2 min-h-[200px] bg-light-hover/50 dark:bg-dark-hover/50 rounded-xl p-2">
                 {tasks
                   .filter((t) => t.status === status)
                   .map((task) => (
@@ -134,10 +144,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
                           style={{ backgroundColor: priorityColors[task.priority] }}
                         />
-                        <p className="text-sm text-jet">{task.title}</p>
+                        <p className="text-sm text-jet dark:text-dark-text">{task.title}</p>
                       </div>
                       {task.dueDate ? (
-                        <p className="text-xs text-french-gray mt-2">{task.dueDate}</p>
+                        <p className="text-xs text-french-gray dark:text-dark-text-secondary mt-2">
+                          {task.dueDate}
+                        </p>
                       ) : null}
                     </Card>
                   ))}
@@ -148,19 +160,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       ) : (
         <Card>
           {tasks.length === 0 ? (
-            <p className="p-6 text-sm text-french-gray text-center">No tasks yet.</p>
+            <p className="p-6 text-sm text-french-gray dark:text-dark-text-secondary text-center">
+              No tasks yet.
+            </p>
           ) : (
             tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0"
+                className="flex items-center gap-3 px-4 py-3 border-b border-light-border dark:border-dark-border last:border-0"
               >
                 <span
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: priorityColors[task.priority] }}
                 />
                 <p className="text-sm flex-1">{task.title}</p>
-                <span className="text-xs text-french-gray">{statusLabels[task.status]}</span>
+                <span className="text-xs text-french-gray dark:text-dark-text-secondary">
+                  {statusLabels[task.status]}
+                </span>
               </div>
             ))
           )}

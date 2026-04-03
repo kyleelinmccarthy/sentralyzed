@@ -53,6 +53,21 @@ class ApiClient {
   delete<T>(path: string) {
     return this.fetch<T>(path, { method: 'DELETE' })
   }
+
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new ApiError(res.status, body.error || res.statusText)
+    }
+
+    return res.json() as Promise<T>
+  }
 }
 
 export class ApiError extends Error {

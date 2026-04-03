@@ -20,7 +20,7 @@ interface Project {
 
 const gradients: Record<string, string> = {
   '#5C6BC0': 'linear-gradient(135deg, #5C6BC0, #3F51B5)',
-  '#7B1FA2': 'linear-gradient(135deg, #7B1FA2, #9C27B0)',
+  '#3B82F6': 'linear-gradient(135deg, #3B82F6, #2563EB)',
   '#26A69A': 'linear-gradient(135deg, #26A69A, #00897B)',
   '#FF7043': 'linear-gradient(135deg, #FF7043, #F4511E)',
 }
@@ -53,13 +53,17 @@ export default function ProjectsPage() {
   }
 
   if (isLoading) {
-    return <div className="animate-pulse text-french-gray">Loading projects...</div>
+    return (
+      <div className="animate-pulse text-french-gray dark:text-dark-text-secondary">
+        Loading projects...
+      </div>
+    )
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-jet">Projects</h1>
+        <h1 className="text-2xl font-bold text-jet dark:text-dark-text">Projects</h1>
         <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : 'New Project'}
         </Button>
@@ -81,7 +85,7 @@ export default function ProjectsPage() {
 
       {projects.length === 0 ? (
         <Card className="p-6">
-          <p className="text-sm text-french-gray text-center">
+          <p className="text-sm text-french-gray dark:text-dark-text-secondary text-center">
             No projects yet. Create one to get started.
           </p>
         </Card>
@@ -100,7 +104,7 @@ export default function ProjectsPage() {
                 <p className="text-sm opacity-80">{project.description || 'No description'}</p>
                 <div className="mt-4 flex items-center gap-2">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
+                    className={`text-xs px-2.5 py-0.5 font-medium rounded-full ${
                       project.status === 'active' ? 'bg-white/20' : 'bg-white/10'
                     }`}
                   >

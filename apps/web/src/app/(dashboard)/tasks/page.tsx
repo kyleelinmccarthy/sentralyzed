@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
 
 interface Project {
   id: string
@@ -44,6 +45,8 @@ export default function TasksPage() {
   const [showForm, setShowForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [filter, setFilter] = useState<'active' | 'completed'>('active')
+
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -108,7 +111,7 @@ export default function TasksPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-jet">All Tasks</h1>
+        <h1 className="text-2xl font-bold text-jet dark:text-dark-text">All Tasks</h1>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ New Task'}
         </Button>
@@ -127,7 +130,7 @@ export default function TasksPage() {
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="flex-1 rounded-lg border border-french-gray/30 px-3 py-2 text-sm bg-white text-jet focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                className="flex-1 rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
               >
                 <option value="">Select project...</option>
                 {projects.map((p) => (
@@ -139,7 +142,7 @@ export default function TasksPage() {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as typeof priority)}
-                className="rounded-lg border border-french-gray/30 px-3 py-2 text-sm bg-white text-jet focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                className="rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -158,22 +161,22 @@ export default function TasksPage() {
         <div className="flex items-center gap-4 mb-4">
           <button
             onClick={() => setFilter('active')}
-            className={`text-sm font-medium pb-1 ${filter === 'active' ? 'text-indigo border-b-2 border-indigo' : 'text-french-gray'}`}
+            className={`text-sm font-medium pb-1 ${filter === 'active' ? 'text-indigo border-b-2 border-indigo' : 'text-french-gray dark:text-dark-text-secondary'}`}
           >
             Active Tasks ({activeTasks.length})
           </button>
           <button
             onClick={() => setFilter('completed')}
-            className={`text-sm font-medium pb-1 ${filter === 'completed' ? 'text-indigo border-b-2 border-indigo' : 'text-french-gray'}`}
+            className={`text-sm font-medium pb-1 ${filter === 'completed' ? 'text-indigo border-b-2 border-indigo' : 'text-french-gray dark:text-dark-text-secondary'}`}
           >
             Completed ({completedTasks.length})
           </button>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-french-gray">Loading tasks...</p>
+          <p className="text-sm text-french-gray dark:text-dark-text-secondary">Loading tasks...</p>
         ) : displayedTasks.length === 0 ? (
-          <p className="text-sm text-french-gray">
+          <p className="text-sm text-french-gray dark:text-dark-text-secondary">
             {filter === 'active'
               ? 'No active tasks. Click "+ New Task" to create one.'
               : 'No completed tasks yet.'}
@@ -181,21 +184,33 @@ export default function TasksPage() {
         ) : (
           <div className="space-y-2">
             {displayedTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center gap-3 p-3 rounded-lg border border-french-gray/20 hover:bg-french-gray/5 transition-colors"
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: priorityColors[task.priority] }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-jet truncate">{task.title}</p>
-                  <p className="text-xs text-french-gray">
-                    {getProjectName(task.projectId)} · {statusLabels[task.status]}
-                    {task.dueDate && ` · Due ${new Date(task.dueDate).toLocaleDateString()}`}
-                  </p>
+              <div key={task.id}>
+                <div
+                  onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover transition-colors cursor-pointer"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: priorityColors[task.priority] }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-jet dark:text-dark-text truncate">
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-french-gray dark:text-dark-text-secondary">
+                      {getProjectName(task.projectId)} · {statusLabels[task.status]}
+                      {task.dueDate && ` · Due ${new Date(task.dueDate).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-french-gray dark:text-dark-text-secondary">
+                    {expandedTaskId === task.id ? '▲' : '▼'}
+                  </span>
                 </div>
+                {expandedTaskId === task.id && (
+                  <div className="ml-5 mt-2 mb-3 p-3 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border">
+                    <UserAssignmentPicker entityType="task" entityId={task.id} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

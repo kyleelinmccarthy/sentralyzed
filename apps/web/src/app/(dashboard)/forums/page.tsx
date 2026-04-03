@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PollsSection } from '@/components/polls/PollsSection'
 
 interface Category {
   id: string
@@ -158,6 +159,10 @@ export default function ForumsPage() {
             </Card>
           ))}
         </div>
+
+        <Card className="p-4 mb-4">
+          <PollsSection contextType="forum" contextId={activeThread.id} />
+        </Card>
 
         {!activeThread.isLocked && (
           <Card className="p-4">

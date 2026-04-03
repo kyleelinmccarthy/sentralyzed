@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum, customType } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  timestamp,
+  pgEnum,
+  customType,
+  jsonb,
+} from 'drizzle-orm/pg-core'
 import { timestamps, softDelete } from './_helpers'
 import { users } from './users'
 import { projects } from './projects'
@@ -19,6 +28,7 @@ export const whiteboards = pgTable('whiteboards', {
     .notNull()
     .references(() => users.id),
   yjsState: bytea('yjs_state'),
+  shapesData: jsonb('shapes_data').$type<unknown[]>().default([]),
   thumbnailUrl: text('thumbnail_url'),
   ...timestamps(),
   ...softDelete(),
