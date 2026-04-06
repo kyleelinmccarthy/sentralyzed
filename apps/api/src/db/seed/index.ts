@@ -5,7 +5,7 @@ import { hash } from '../../lib/auth.js'
 
 async function seed() {
   const connectionString =
-    process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5432/sentral_dev'
+    process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev'
   const client = postgres(connectionString)
   const db = drizzle(client)
 

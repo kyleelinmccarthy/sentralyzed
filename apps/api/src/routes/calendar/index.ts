@@ -73,7 +73,12 @@ calendarRouter.patch(
     }),
   ),
   async (c) => {
-    const event = await calendarService.updateEvent(c.req.param('id'), c.req.valid('json'))
+    const body = c.req.valid('json')
+    const event = await calendarService.updateEvent(c.req.param('id'), {
+      ...body,
+      description: body.description ?? undefined,
+      location: body.location ?? undefined,
+    })
     if (!event) return c.json({ error: 'Event not found' }, 404)
     return c.json({ event })
   },

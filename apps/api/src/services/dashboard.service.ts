@@ -189,7 +189,7 @@ export class DashboardService {
         return {
           channelId: row.channelId,
           channelName: row.channelName,
-          unreadCount: result.count,
+          unreadCount: result?.count ?? 0,
         }
       }),
     )

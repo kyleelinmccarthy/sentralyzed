@@ -98,7 +98,7 @@ describe('ExpensesPage', () => {
     expect(screen.getByText('Reports')).toBeInTheDocument()
 
     // Reset
-    mockUser.role = 'member' as 'member'
+    mockUser.role = 'member' as const
   })
 
   it('switches to Budgets tab', () => {
@@ -109,7 +109,7 @@ describe('ExpensesPage', () => {
 
     expect(screen.getByText('No budgets set up yet.')).toBeInTheDocument()
 
-    mockUser.role = 'member' as 'member'
+    mockUser.role = 'member' as const
   })
 
   it('switches to Reports tab', () => {
@@ -121,7 +121,7 @@ describe('ExpensesPage', () => {
     expect(screen.getByLabelText('Start Date')).toBeInTheDocument()
     expect(screen.getByLabelText('End Date')).toBeInTheDocument()
 
-    mockUser.role = 'member' as 'member'
+    mockUser.role = 'member' as const
   })
 
   it('toggles new expense form', () => {

@@ -95,7 +95,7 @@ Exports types and Zod validators via subpath exports:
 | Web        | 3000 |
 | API HTTP   | 3001 |
 | WebSocket  | 3002 |
-| PostgreSQL | 5432 |
+| PostgreSQL | 5433 |
 | Redis      | 6379 |
 
 ## Auth & Roles

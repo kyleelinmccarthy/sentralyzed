@@ -6,6 +6,6 @@ export default defineConfig({
   dialect: 'postgresql',
   dbCredentials: {
     url:
-      process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5432/sentral_dev',
+      process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev',
   },
 })

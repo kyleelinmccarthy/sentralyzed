@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, isLoading, isPublicPath, router])
 
-  if (isLoading) {
+  if (isLoading || (!isAuthenticated && !isPublicPath)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin h-8 w-8 border-4 border-indigo border-t-transparent rounded-full" />

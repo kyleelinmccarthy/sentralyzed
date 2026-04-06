@@ -201,6 +201,8 @@ export class ExpensesService {
 
     return {
       ...budget,
+      createdAt: budget.createdAt.toISOString(),
+      updatedAt: budget.updatedAt.toISOString(),
       spentCents,
       remainingCents: budget.amountCents - spentCents,
     } as BudgetWithSpent
