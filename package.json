@@ -1,5 +1,5 @@
 {
-  "name": "sentralyzed",
+  "name": "sentral",
   "private": true,
   "workspaces": [
     "apps/*",

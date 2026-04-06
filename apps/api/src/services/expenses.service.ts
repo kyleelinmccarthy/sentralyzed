@@ -9,12 +9,12 @@ import type {
   CreateBudgetInput,
   UpdateBudgetInput,
   ReportQueryInput,
-} from '@sentralyzed/shared/validators/expense'
+} from '@sentral/shared/validators/expense'
 import type {
   ExpenseSummary,
   ExpenseCategory,
   BudgetWithSpent,
-} from '@sentralyzed/shared/types/expense'
+} from '@sentral/shared/types/expense'
 import { whereActiveById, softDelete, canAccessAsOwner } from './utils/db-helpers.js'
 
 type Role = 'admin' | 'manager' | 'member'

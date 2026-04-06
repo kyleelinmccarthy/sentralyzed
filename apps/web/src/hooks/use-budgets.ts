@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import type { Budget, BudgetWithSpent } from '@sentralyzed/shared/types/expense'
-import type { CreateBudgetInput, UpdateBudgetInput } from '@sentralyzed/shared/validators/expense'
+import type { Budget, BudgetWithSpent } from '@sentral/shared/types/expense'
+import type { CreateBudgetInput, UpdateBudgetInput } from '@sentral/shared/validators/expense'
 
 interface UseBudgetsReturn {
   budgets: BudgetWithSpent[]

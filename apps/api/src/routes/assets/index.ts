@@ -5,7 +5,7 @@ import {
   createAssetSchema,
   updateAssetSchema,
   assetQuerySchema,
-} from '@sentralyzed/shared/validators/asset'
+} from '@sentral/shared/validators/asset'
 import { authMiddleware } from '../../middleware/auth.js'
 import { assetsService } from '../../services/assets.service.js'
 import type { AppEnv } from '../../types.js'

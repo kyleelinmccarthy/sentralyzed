@@ -3,9 +3,9 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CATEGORY_LABELS, PERIOD_LABELS, parseDollarsToCents } from '@/lib/expense-helpers'
-import { EXPENSE_CATEGORIES, BUDGET_PERIODS } from '@sentralyzed/shared/types/expense'
-import type { Budget, ExpenseCategory, BudgetPeriod } from '@sentralyzed/shared/types/expense'
-import type { CreateBudgetInput } from '@sentralyzed/shared/validators/expense'
+import { EXPENSE_CATEGORIES, BUDGET_PERIODS } from '@sentral/shared/types/expense'
+import type { Budget, ExpenseCategory, BudgetPeriod } from '@sentral/shared/types/expense'
+import type { CreateBudgetInput } from '@sentral/shared/validators/expense'
 
 interface Project {
   id: string

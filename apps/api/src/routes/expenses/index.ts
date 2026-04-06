@@ -10,7 +10,7 @@ import {
   createBudgetSchema,
   updateBudgetSchema,
   reportQuerySchema,
-} from '@sentralyzed/shared/validators/expense'
+} from '@sentral/shared/validators/expense'
 import type { AppEnv } from '../../types.js'
 
 const expensesRouter = new Hono<AppEnv>()

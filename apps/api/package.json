@@ -1,5 +1,5 @@
 {
-  "name": "@sentralyzed/api",
+  "name": "@sentral/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@hono/node-server": "^1.14.0",
     "@hono/zod-validator": "^0.7.6",
-    "@sentralyzed/shared": "*",
+    "@sentral/shared": "*",
     "argon2": "^0.44.0",
     "cookie": "^1.1.1",
     "drizzle-orm": "^0.38.0",
@@ -32,7 +32,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@sentralyzed/config": "*",
+    "@sentral/config": "*",
     "@types/cookie": "^0.6.0",
     "@types/node": "^22.0.0",
     "@types/ws": "^8.18.1",

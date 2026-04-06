@@ -7,7 +7,7 @@ import { addConnection, removeConnection, getAllConnections } from './connection
 import { handleMessage, setupPubSub } from './handlers.js'
 
 const HEARTBEAT_INTERVAL = 30_000
-const SESSION_COOKIE = 'sentralyzed_session'
+const SESSION_COOKIE = 'sentral_session'
 
 export function createWebSocketServer(port: number) {
   const wss = new WebSocketServer({ port })

@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@sentralyzed/shared'],
+  transpilePackages: ['@sentral/shared'],
 }
 
 export default nextConfig

@@ -5,7 +5,7 @@ import {
   createClientSchema,
   updateClientSchema,
   clientProjectSchema,
-} from '@sentralyzed/shared/validators/client'
+} from '@sentral/shared/validators/client'
 import { authMiddleware } from '../../middleware/auth.js'
 import { clientsService } from '../../services/clients.service.js'
 import type { AppEnv } from '../../types.js'

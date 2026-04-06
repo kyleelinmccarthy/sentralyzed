@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Authentication', () => {
   test('login page renders correctly', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByRole('heading', { name: 'Sentralyzed' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sentral' })).toBeVisible()
     await expect(page.getByText('Sign in to your workspace')).toBeVisible()
     await expect(page.getByText('Continue with Google')).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
@@ -34,7 +34,7 @@ test.describe('Authentication', () => {
 
   test('register page with token shows form', async ({ page }) => {
     await page.goto('/register?token=test-token-123')
-    await expect(page.getByText('Join Sentralyzed')).toBeVisible()
+    await expect(page.getByText('Join Sentral')).toBeVisible()
     await expect(page.getByLabel('Full Name')).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password')).toBeVisible()

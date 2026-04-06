@@ -1,8 +1,8 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { polls, pollOptions, pollVotes } from '../db/schema/polls.js'
-import type { CreatePollInput } from '@sentralyzed/shared/validators/poll'
-import type { PollContextType } from '@sentralyzed/shared/types/poll'
+import type { CreatePollInput } from '@sentral/shared/validators/poll'
+import type { PollContextType } from '@sentral/shared/types/poll'
 import { DEFAULT_PAGE_LIMIT } from './utils/db-helpers.js'
 
 export class PollsService {

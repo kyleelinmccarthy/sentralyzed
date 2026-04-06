@@ -6,11 +6,11 @@ COPY package.json package-lock.json* ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/config/package.json ./packages/config/
-RUN npm ci --workspace=@sentralyzed/web --workspace=@sentralyzed/shared --include-workspace-root
+RUN npm ci --workspace=@sentral/web --workspace=@sentral/shared --include-workspace-root
 
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
-RUN npm run build --workspace=@sentralyzed/web
+RUN npm run build --workspace=@sentral/web
 
 FROM base AS runner
 WORKDIR /app

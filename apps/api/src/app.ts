@@ -44,7 +44,7 @@ app.use('*', rateLimit(200, 60 * 1000)) // 200 req / min
 
 // Health & info
 app.get('/', (c) => {
-  return c.json({ name: 'Sentralyzed API', version: '0.1.0', status: 'ok' })
+  return c.json({ name: 'Sentral API', version: '0.1.0', status: 'ok' })
 })
 
 app.get('/health', (c) => {

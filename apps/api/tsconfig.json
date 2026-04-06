@@ -1,5 +1,5 @@
 {
-  "extends": "@sentralyzed/config/typescript/node",
+  "extends": "@sentral/config/typescript/node",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist"

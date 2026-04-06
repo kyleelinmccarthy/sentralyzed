@@ -14,7 +14,7 @@ test.describe('API Endpoints', () => {
     const res = await request.get(`${API_URL}/`)
     expect(res.ok()).toBeTruthy()
     const body = await res.json()
-    expect(body.name).toBe('Sentralyzed API')
+    expect(body.name).toBe('Sentral API')
     expect(body.status).toBe('ok')
   })
 

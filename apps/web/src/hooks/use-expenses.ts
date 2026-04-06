@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import type { Expense, ExpenseStatus, ExpenseCategory } from '@sentralyzed/shared/types/expense'
+import type { Expense, ExpenseStatus, ExpenseCategory } from '@sentral/shared/types/expense'
 import type {
   CreateExpenseInput,
   UpdateExpenseInput,
   ReviewExpenseInput,
-} from '@sentralyzed/shared/validators/expense'
+} from '@sentral/shared/validators/expense'
 
 export interface ExpenseFilters {
   status?: ExpenseStatus

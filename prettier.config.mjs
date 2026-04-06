@@ -1,1 +1,1 @@
-export { default } from '@sentralyzed/config/prettier'
+export { default } from '@sentral/config/prettier'

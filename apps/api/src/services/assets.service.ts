@@ -6,7 +6,7 @@ import type {
   CreateAssetInput,
   UpdateAssetInput,
   AssetQueryInput,
-} from '@sentralyzed/shared/validators/asset'
+} from '@sentral/shared/validators/asset'
 import { whereActiveById, softDelete, canAccessAsOwner } from './utils/db-helpers.js'
 
 type Role = 'admin' | 'manager' | 'member'

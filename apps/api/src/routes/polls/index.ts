@@ -6,8 +6,8 @@ import {
   createPollSchema,
   votePollSchema,
   pollContextTypeSchema,
-} from '@sentralyzed/shared/validators/poll'
-import type { PollContextType } from '@sentralyzed/shared/types/poll'
+} from '@sentral/shared/validators/poll'
+import type { PollContextType } from '@sentral/shared/types/poll'
 import type { AppEnv } from '../../types.js'
 
 const pollsRouter = new Hono<AppEnv>()

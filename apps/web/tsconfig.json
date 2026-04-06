@@ -1,5 +1,5 @@
 {
-  "extends": "@sentralyzed/config/typescript/nextjs",
+  "extends": "@sentral/config/typescript/nextjs",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]

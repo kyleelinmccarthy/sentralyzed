@@ -1,5 +1,5 @@
 {
-  "name": "@sentralyzed/shared",
+  "name": "@sentral/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@sentralyzed/config": "*",
+    "@sentral/config": "*",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
     "eslint": "^9.0.0",

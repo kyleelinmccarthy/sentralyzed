@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/layout/theme-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Sentralyzed',
+  title: 'Sentral',
   description: 'All-in-one project management workspace by Solvre Tech',
 }
 

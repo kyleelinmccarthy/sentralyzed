@@ -6,7 +6,7 @@ import {
   createEntityLinkSchema,
   sourceTypeSchema,
   targetTypeSchema,
-} from '@sentralyzed/shared/validators/entity-link'
+} from '@sentral/shared/validators/entity-link'
 import type { AppEnv } from '../../types.js'
 
 const entityLinksRouter = new Hono<AppEnv>()

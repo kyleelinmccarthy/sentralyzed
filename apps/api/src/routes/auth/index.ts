@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { zValidator } from '@hono/zod-validator'
-import { loginSchema, registerSchema } from '@sentralyzed/shared/validators/user'
+import { loginSchema, registerSchema } from '@sentral/shared/validators/user'
 import { authService } from '../../services/auth.service.js'
 import { authMiddleware } from '../../middleware/auth.js'
 import { env } from '../../lib/env.js'
@@ -9,7 +9,7 @@ import type { AppEnv } from '../../types.js'
 import { google } from 'googleapis'
 import { z } from 'zod'
 
-const SESSION_COOKIE = 'sentralyzed_session'
+const SESSION_COOKIE = 'sentral_session'
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',

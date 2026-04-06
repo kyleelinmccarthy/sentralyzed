@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { FileAttachments } from '@/components/files/FileAttachments'
-import type { WsMessage } from '@sentralyzed/shared/types/websocket'
+import type { WsMessage } from '@sentral/shared/types/websocket'
 
 interface ChatUser {
   id: string

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { CreatePollForm } from './CreatePollForm'
 import { PollCard } from './PollCard'
-import type { PollContextType, PollWithResults } from '@sentralyzed/shared/types/poll'
+import type { PollContextType, PollWithResults } from '@sentral/shared/types/poll'
 
 interface PollsSectionProps {
   contextType: PollContextType

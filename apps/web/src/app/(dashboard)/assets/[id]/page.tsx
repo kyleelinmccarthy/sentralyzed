@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input'
 import { ArrowLeft, Package, FolderKanban, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
-import { ASSET_STATUSES, ASSET_CATEGORIES } from '@sentralyzed/shared/types/asset'
-import type { Asset, AssetStatus, AssetCategory } from '@sentralyzed/shared/types/asset'
-import type { Expense } from '@sentralyzed/shared/types/expense'
+import { ASSET_STATUSES, ASSET_CATEGORIES } from '@sentral/shared/types/asset'
+import type { Asset, AssetStatus, AssetCategory } from '@sentral/shared/types/asset'
+import type { Expense } from '@sentral/shared/types/expense'
 
 interface Project {
   id: string

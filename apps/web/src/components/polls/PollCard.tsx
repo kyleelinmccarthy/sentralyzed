@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import type { PollWithResults } from '@sentralyzed/shared/types/poll'
+import type { PollWithResults } from '@sentral/shared/types/poll'
 import { FileAttachments } from '@/components/files/FileAttachments'
 
 interface PollCardProps {

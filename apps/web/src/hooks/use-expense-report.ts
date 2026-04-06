@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import type { ExpenseSummary } from '@sentralyzed/shared/types/expense'
+import type { ExpenseSummary } from '@sentral/shared/types/expense'
 
 export interface ReportFilters {
   startDate: string
@@ -42,8 +42,8 @@ export function useExpenseReport(): UseExpenseReportReturn {
         endDate: filters.endDate,
       })
       if (filters.projectId) params.set('projectId', filters.projectId)
-      const data = await api.get<ExpenseSummary>(`/expenses/reports/summary?${params}`)
-      setSummary(data)
+      const data = await api.get<{ summary: ExpenseSummary }>(`/expenses/reports/summary?${params}`)
+      setSummary(data.summary)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report')
     } finally {

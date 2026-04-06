@@ -26,18 +26,18 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: sentralyzed_test
-          POSTGRES_USER: sentralyzed
+          POSTGRES_DB: sentral_test
+          POSTGRES_USER: sentral
           POSTGRES_PASSWORD: testpassword
         options: >-
-          --health-cmd "pg_isready -U sentralyzed"
+          --health-cmd "pg_isready -U sentral"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
           - 5432:5432
     env:
-      DATABASE_URL: postgresql://sentralyzed:testpassword@localhost:5432/sentralyzed_test
+      DATABASE_URL: postgresql://sentral:testpassword@localhost:5432/sentral_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

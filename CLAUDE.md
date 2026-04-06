@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sentralyzed is a collaborative workspace platform (Next.js 15 + Hono.js + PostgreSQL) organized as an npm workspaces monorepo with Turborepo orchestration. Real-time collaboration uses WebSocket (ws) + Yjs CRDTs.
+Sentral is a collaborative workspace platform (Next.js 15 + Hono.js + PostgreSQL) organized as an npm workspaces monorepo with Turborepo orchestration. Real-time collaboration uses WebSocket (ws) + Yjs CRDTs.
 
 ## Commands
 
@@ -33,21 +33,21 @@ npm run test                             # All unit tests (Vitest)
 npx vitest run path/to/file.test.ts      # Single test file (from app dir)
 
 # Workspace-scoped
-npm run test --workspace=@sentralyzed/api
-npm run test --workspace=@sentralyzed/web
+npm run test --workspace=@sentral/api
+npm run test --workspace=@sentral/web
 
 # E2E (Playwright, web only)
-npm run test:e2e --workspace=@sentralyzed/web
+npm run test:e2e --workspace=@sentral/web
 ```
 
 ### Database (run from repo root, executes in apps/api)
 
 ```bash
-npm run db:generate --workspace=@sentralyzed/api   # Generate migrations from schema changes
-npm run db:push --workspace=@sentralyzed/api       # Push schema directly (dev)
-npm run db:migrate --workspace=@sentralyzed/api    # Run migrations (prod)
-npm run db:studio --workspace=@sentralyzed/api     # Drizzle Studio GUI
-npm run db:seed --workspace=@sentralyzed/api       # Seed test data
+npm run db:generate --workspace=@sentral/api   # Generate migrations from schema changes
+npm run db:push --workspace=@sentral/api       # Push schema directly (dev)
+npm run db:migrate --workspace=@sentral/api    # Run migrations (prod)
+npm run db:studio --workspace=@sentral/api     # Drizzle Studio GUI
+npm run db:seed --workspace=@sentral/api       # Seed test data
 ```
 
 ## Architecture
@@ -70,7 +70,7 @@ packages/
 - **Auth**: Cookie-based sessions. Middleware in `src/middleware/auth.ts` provides `authMiddleware` and `requireRole()`. Passwords hashed with Argon2. Google OAuth supported.
 - **Security**: `src/middleware/security.ts` — rate limiting (20 req/15min auth, 200 req/min general), security headers
 - **WebSocket**: Separate server on port 3002 (`src/ws/`). Authenticates via session cookie, tracks connections, 30s heartbeat.
-- **Validation**: @hono/zod-validator with schemas from `@sentralyzed/shared/validators`
+- **Validation**: @hono/zod-validator with schemas from `@sentral/shared/validators`
 
 ### Web (apps/web)
 
@@ -85,8 +85,8 @@ packages/
 
 Exports types and Zod validators via subpath exports:
 
-- `@sentralyzed/shared/types/*`
-- `@sentralyzed/shared/validators/*`
+- `@sentral/shared/types/*`
+- `@sentral/shared/validators/*`
 
 ## Ports
 
@@ -100,7 +100,7 @@ Exports types and Zod validators via subpath exports:
 
 ## Auth & Roles
 
-Three roles: `admin`, `manager`, `member`. Invite-only registration via token. Session cookie (`sentralyzed_session`) is httpOnly, 7-day expiry.
+Three roles: `admin`, `manager`, `member`. Invite-only registration via token. Session cookie (`sentral_session`) is httpOnly, 7-day expiry.
 
 ## Deployment
 

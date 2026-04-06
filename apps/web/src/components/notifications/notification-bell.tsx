@@ -5,8 +5,8 @@ import { Bell } from 'lucide-react'
 import { useNotificationStore } from '@/stores/notifications'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { NotificationList } from './notification-list'
-import type { WsMessage } from '@sentralyzed/shared/types/websocket'
-import type { NotificationPayload } from '@sentralyzed/shared/types/websocket'
+import type { WsMessage } from '@sentral/shared/types/websocket'
+import type { NotificationPayload } from '@sentral/shared/types/websocket'
 
 export function NotificationBell() {
   const { unreadCount, fetchNotifications, fetchUnreadCount, addNotification } =

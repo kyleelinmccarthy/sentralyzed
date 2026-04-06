@@ -4,7 +4,7 @@ import {
   chatMessagePayloadSchema,
   typingPayloadSchema,
   reactionPayloadSchema,
-} from '@sentralyzed/shared/validators/websocket'
+} from '@sentral/shared/validators/websocket'
 import { db } from '../db/index.js'
 import { messages, reactions, channelMembers } from '../db/schema/chat.js'
 import { eq } from 'drizzle-orm'

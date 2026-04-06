@@ -9,7 +9,7 @@ import {
   createAssignmentSchema,
   updateAssignmentSchema,
   assignableEntityTypeSchema,
-} from '@sentralyzed/shared/validators/assignment'
+} from '@sentral/shared/validators/assignment'
 import type { AppEnv } from '../../types.js'
 
 const assignmentsRouter = new Hono<AppEnv>()

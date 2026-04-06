@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Plus, Package, User, FolderKanban, Building2 } from 'lucide-react'
 import { useAssets } from '@/hooks/use-assets'
 import { api } from '@/lib/api'
-import { ASSET_STATUSES, ASSET_CATEGORIES } from '@sentralyzed/shared/types/asset'
-import type { AssetCategory, AssetStatus } from '@sentralyzed/shared/types/asset'
+import { ASSET_STATUSES, ASSET_CATEGORIES } from '@sentral/shared/types/asset'
+import type { AssetCategory, AssetStatus } from '@sentral/shared/types/asset'
 
 interface Project {
   id: string

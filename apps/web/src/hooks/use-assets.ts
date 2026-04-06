@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import type { Asset, AssetStatus, AssetCategory } from '@sentralyzed/shared/types/asset'
-import type { CreateAssetInput, UpdateAssetInput } from '@sentralyzed/shared/validators/asset'
+import type { Asset, AssetStatus, AssetCategory } from '@sentral/shared/types/asset'
+import type { CreateAssetInput, UpdateAssetInput } from '@sentral/shared/validators/asset'
 
 export interface AssetFilters {
   status?: AssetStatus

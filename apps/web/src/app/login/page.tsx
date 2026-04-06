@@ -36,7 +36,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-jet font-[family-name:var(--font-heading)]">
-            Sentralyzed
+            Sentral
           </h1>
           <p className="text-sm text-french-gray mt-2">Sign in to your workspace</p>
         </div>

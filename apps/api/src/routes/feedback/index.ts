@@ -8,7 +8,7 @@ import {
   updateFeedbackStatusSchema,
   createFeedbackResponseSchema,
   feedbackQuerySchema,
-} from '@sentralyzed/shared/validators/feedback'
+} from '@sentral/shared/validators/feedback'
 import type { AppEnv } from '../../types.js'
 
 const feedbackRouter = new Hono<AppEnv>()

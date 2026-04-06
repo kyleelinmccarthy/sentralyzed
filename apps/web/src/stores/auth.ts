@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { api, ApiError } from '@/lib/api'
-import type { User } from '@sentralyzed/shared/types/user'
+import type { User } from '@sentral/shared/types/user'
 
 interface AuthState {
   user: User | null

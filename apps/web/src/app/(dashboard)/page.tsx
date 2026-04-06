@@ -11,7 +11,7 @@ import type {
   DashboardGoal,
   DashboardFeedback,
   DashboardChatNotification,
-} from '@sentralyzed/shared/types/dashboard'
+} from '@sentral/shared/types/dashboard'
 
 type FilterTab = 'all' | 'tasks' | 'events' | 'goals' | 'feedback'
 

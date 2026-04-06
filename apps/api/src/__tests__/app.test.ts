@@ -7,7 +7,7 @@ describe('API App', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toMatchObject({
-      name: 'Sentralyzed API',
+      name: 'Sentral API',
       status: 'ok',
     })
   })

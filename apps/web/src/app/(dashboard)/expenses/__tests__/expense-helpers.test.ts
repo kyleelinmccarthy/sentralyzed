@@ -8,11 +8,7 @@ import {
   STATUS_COLORS,
   PERIOD_LABELS,
 } from '@/lib/expense-helpers'
-import {
-  EXPENSE_CATEGORIES,
-  EXPENSE_STATUSES,
-  BUDGET_PERIODS,
-} from '@sentralyzed/shared/types/expense'
+import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, BUDGET_PERIODS } from '@sentral/shared/types/expense'
 
 describe('formatCents', () => {
   it('formats positive amounts', () => {

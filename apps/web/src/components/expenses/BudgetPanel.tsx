@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button'
 import { BudgetCard } from './BudgetCard'
 import { BudgetForm } from './BudgetForm'
 import { useBudgets } from '@/hooks/use-budgets'
-import type { Budget } from '@sentralyzed/shared/types/expense'
-import type { CreateBudgetInput } from '@sentralyzed/shared/validators/expense'
+import type { Budget } from '@sentral/shared/types/expense'
+import type { CreateBudgetInput } from '@sentral/shared/validators/expense'
 import { Plus } from 'lucide-react'
 
 interface Project {

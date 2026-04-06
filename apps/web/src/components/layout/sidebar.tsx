@@ -103,7 +103,7 @@ export function Sidebar() {
           className="text-lg font-bold tracking-tight text-jet dark:text-dark-text"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
-          Sentralyzed
+          Sentral
         </h1>
       </div>
 

@@ -1,6 +1,6 @@
 import { ExpenseCard } from './ExpenseCard'
 import { Button } from '@/components/ui/button'
-import type { Expense } from '@sentralyzed/shared/types/expense'
+import type { Expense } from '@sentral/shared/types/expense'
 
 interface ExpenseListProps {
   expenses: Expense[]

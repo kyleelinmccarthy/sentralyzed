@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatCents } from '@/lib/expense-helpers'
-import type { Expense } from '@sentralyzed/shared/types/expense'
-import type { ReviewExpenseInput } from '@sentralyzed/shared/validators/expense'
+import type { Expense } from '@sentral/shared/types/expense'
+import type { ReviewExpenseInput } from '@sentral/shared/validators/expense'
 
 interface ExpenseReviewModalProps {
   expense: Expense

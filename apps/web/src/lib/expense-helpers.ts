@@ -1,13 +1,5 @@
-import type {
-  ExpenseCategory,
-  ExpenseStatus,
-  BudgetPeriod,
-} from '@sentralyzed/shared/types/expense'
-import {
-  EXPENSE_CATEGORIES,
-  EXPENSE_STATUSES,
-  BUDGET_PERIODS,
-} from '@sentralyzed/shared/types/expense'
+import type { ExpenseCategory, ExpenseStatus, BudgetPeriod } from '@sentral/shared/types/expense'
+import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, BUDGET_PERIODS } from '@sentral/shared/types/expense'
 
 export function formatCents(amountCents: number): string {
   const dollars = amountCents / 100

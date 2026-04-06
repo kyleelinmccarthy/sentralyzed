@@ -5,8 +5,8 @@ import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { Card } from '@/components/ui/card'
 import { PollCard } from '@/components/polls/PollCard'
-import { POLL_CONTEXT_TYPES } from '@sentralyzed/shared/types/poll'
-import type { PollWithResults, PollContextType } from '@sentralyzed/shared/types/poll'
+import { POLL_CONTEXT_TYPES } from '@sentral/shared/types/poll'
+import type { PollWithResults, PollContextType } from '@sentral/shared/types/poll'
 
 const contextLabels: Record<PollContextType, string> = {
   channel: 'Chat',

@@ -2,10 +2,10 @@
 
 ## Architecture Overview
 
-Sentralyzed runs as a monorepo with three main services:
+Sentral runs as a monorepo with three main services:
 
-- **Web** (Next.js 15): Frontend at `app.sentralyzed.com`
-- **API** (Hono.js): Backend at `api.sentralyzed.com`
+- **Web** (Next.js 15): Frontend at `app.sentral.com`
+- **API** (Hono.js): Backend at `api.sentral.com`
 - **Database**: PostgreSQL 16 + Redis 7
 
 ## Home Server Setup
@@ -31,23 +31,23 @@ Access dashboard at `http://<server-ip>:8000`
 2. Zero Trust → Networks → Tunnels → Create
 3. Install `cloudflared` connector on server
 4. Map hostnames:
-   - `app.sentralyzed.com` → `http://localhost:80`
-   - `coolify.sentralyzed.com` → `http://localhost:8000`
-   - `api.sentralyzed.com` → `http://localhost:3001`
-5. Add wildcard CNAME: `*.sentralyzed.com` → `<tunnel-id>.cfargotunnel.com`
+   - `app.sentral.com` → `http://localhost:80`
+   - `coolify.sentral.com` → `http://localhost:8000`
+   - `api.sentral.com` → `http://localhost:3001`
+5. Add wildcard CNAME: `*.sentral.com` → `<tunnel-id>.cfargotunnel.com`
 
 ### 3. Provision Services in Coolify
 
-1. Create project "Sentralyzed"
-2. Add PostgreSQL 16 (one-click) → name: `sentralyzed-db`
-3. Add Redis 7 (one-click) → name: `sentralyzed-redis`
+1. Create project "Sentral"
+2. Add PostgreSQL 16 (one-click) → name: `sentral-db`
+3. Add Redis 7 (one-click) → name: `sentral-redis`
 4. Note connection strings for env vars
 
 ### 4. Connect GitHub & Deploy
 
 1. Coolify → Sources → Add GitHub App → authorize repo
-2. Add `apps/api` as Dockerfile deployment (domain: `api.sentralyzed.com`)
-3. Add `apps/web` as Dockerfile deployment (domain: `app.sentralyzed.com`)
+2. Add `apps/api` as Dockerfile deployment (domain: `api.sentral.com`)
+3. Add `apps/web` as Dockerfile deployment (domain: `app.sentral.com`)
 4. Set environment variables in Coolify dashboard
 5. Auto-deploy triggers on push to `main`
 
@@ -57,7 +57,7 @@ Access dashboard at `http://<server-ip>:8000`
 
 ```bash
 # Add to crontab (runs daily at 2 AM)
-0 2 * * * /path/to/sentralyzed/scripts/backup.sh
+0 2 * * * /path/to/sentral/scripts/backup.sh
 ```
 
 Keeps 7 daily + 4 weekly backups with rotation.
@@ -65,8 +65,8 @@ Keeps 7 daily + 4 weekly backups with rotation.
 ### Manual Restore
 
 ```bash
-gunzip -c /backups/sentralyzed/daily/sentralyzed_YYYYMMDD_HHMMSS.sql.gz | \
-  docker exec -i sentralyzed-db psql -U sentralyzed sentralyzed_dev
+gunzip -c /backups/sentral/daily/sentral_YYYYMMDD_HHMMSS.sql.gz | \
+  docker exec -i sentral-db psql -U sentral sentral_dev
 ```
 
 ## Local Development
@@ -79,10 +79,10 @@ docker compose -f docker-compose.dev.yml up -d
 npm install
 
 # Run migrations
-npm run db:push --workspace=@sentralyzed/api
+npm run db:push --workspace=@sentral/api
 
 # Seed dev data
-npm run db:seed --workspace=@sentralyzed/api
+npm run db:seed --workspace=@sentral/api
 
 # Start all apps in dev mode
 npm run dev

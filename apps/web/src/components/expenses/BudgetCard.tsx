@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatCents, CATEGORY_LABELS, PERIOD_LABELS } from '@/lib/expense-helpers'
-import type { Budget } from '@sentralyzed/shared/types/expense'
+import type { Budget } from '@sentral/shared/types/expense'
 import { Pencil, Trash2 } from 'lucide-react'
 
 interface BudgetCardProps {

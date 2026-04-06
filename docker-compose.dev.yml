@@ -1,25 +1,25 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: sentralyzed-db
+    container_name: sentral-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: sentralyzed_dev
-      POSTGRES_USER: sentralyzed
+      POSTGRES_DB: sentral_dev
+      POSTGRES_USER: sentral
       POSTGRES_PASSWORD: devpassword123
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sentralyzed -d sentralyzed_dev']
+      test: ['CMD-SHELL', 'pg_isready -U sentral -d sentral_dev']
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: sentralyzed-redis
+    container_name: sentral-redis
     restart: unless-stopped
     ports:
       - '6379:6379'

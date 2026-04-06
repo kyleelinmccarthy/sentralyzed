@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useExpenseReport } from '@/hooks/use-expense-report'
 import { formatCents, CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/expense-helpers'
-import type { ExpenseCategory } from '@sentralyzed/shared/types/expense'
+import type { ExpenseCategory } from '@sentral/shared/types/expense'
 
 interface Project {
   id: string

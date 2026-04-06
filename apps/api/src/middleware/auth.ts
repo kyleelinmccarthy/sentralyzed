@@ -1,9 +1,9 @@
 import type { Context, Next } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { authService } from '../services/auth.service.js'
-import type { Role } from '@sentralyzed/shared/types/user'
+import type { Role } from '@sentral/shared/types/user'
 
-const SESSION_COOKIE = 'sentralyzed_session'
+const SESSION_COOKIE = 'sentral_session'
 
 export interface AuthUser {
   id: string

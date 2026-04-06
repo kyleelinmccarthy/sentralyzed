@@ -7,7 +7,7 @@ import {
   STATUS_LABELS,
   STATUS_COLORS,
 } from '@/lib/expense-helpers'
-import type { Expense } from '@sentralyzed/shared/types/expense'
+import type { Expense } from '@sentral/shared/types/expense'
 import { Calendar, Tag, Building2, Pencil, Trash2, ClipboardCheck } from 'lucide-react'
 import { FileAttachments } from '@/components/files/FileAttachments'
 

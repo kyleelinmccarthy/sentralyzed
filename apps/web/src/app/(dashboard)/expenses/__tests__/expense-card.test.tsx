@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ExpenseCard } from '@/components/expenses/ExpenseCard'
-import type { Expense } from '@sentralyzed/shared/types/expense'
+import type { Expense } from '@sentral/shared/types/expense'
 
 const baseExpense: Expense = {
   id: 'exp-1',

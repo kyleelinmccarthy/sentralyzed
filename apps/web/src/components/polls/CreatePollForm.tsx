@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import type { PollContextType, PollWithResults } from '@sentralyzed/shared/types/poll'
+import type { PollContextType, PollWithResults } from '@sentral/shared/types/poll'
 
 interface CreatePollFormProps {
   contextType: PollContextType

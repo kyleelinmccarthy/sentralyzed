@@ -6,7 +6,7 @@ import type {
   UpdateFeedbackInput,
   UpdateFeedbackStatusInput,
   FeedbackQueryInput,
-} from '@sentralyzed/shared/validators/feedback'
+} from '@sentral/shared/validators/feedback'
 import { whereActiveById, softDelete, canAccessAsOwner } from './utils/db-helpers.js'
 
 type Role = 'admin' | 'manager' | 'member'

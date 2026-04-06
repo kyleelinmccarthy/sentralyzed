@@ -49,7 +49,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-jet">Join Sentralyzed</h1>
+          <h1 className="text-3xl font-bold text-jet">Join Sentral</h1>
           <p className="text-sm text-french-gray mt-2">Create your account</p>
         </div>
 

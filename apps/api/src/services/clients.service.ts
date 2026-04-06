@@ -1,7 +1,7 @@
 import { eq, and, isNull, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { clients, clientProjects } from '../db/schema/clients.js'
-import type { ClientStatus, ClientProjectRole } from '@sentralyzed/shared/types/client'
+import type { ClientStatus, ClientProjectRole } from '@sentral/shared/types/client'
 import { whereActiveById, softDelete } from './utils/db-helpers.js'
 
 export class ClientsService {

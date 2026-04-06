@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { api } from '@/lib/api'
-import type { NotificationPayload } from '@sentralyzed/shared/types/websocket'
+import type { NotificationPayload } from '@sentral/shared/types/websocket'
 
 export interface NotificationItem {
   notification: {

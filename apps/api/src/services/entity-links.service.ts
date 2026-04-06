@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { entityLinks } from '../db/schema/entity-links.js'
-import type { SourceType, TargetType } from '@sentralyzed/shared/types/entity-link'
+import type { SourceType, TargetType } from '@sentral/shared/types/entity-link'
 
 const SOURCE_QUERIES: Record<SourceType, keyof typeof db.query> = {
   message: 'messages',

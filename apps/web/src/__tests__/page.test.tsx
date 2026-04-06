@@ -20,7 +20,7 @@ vi.mock('@/stores/auth', () => ({
 describe('Login Page', () => {
   it('renders the login form', () => {
     render(<LoginPage />)
-    expect(screen.getByText('Sentralyzed')).toBeInTheDocument()
+    expect(screen.getByText('Sentral')).toBeInTheDocument()
     expect(screen.getByText('Sign in to your workspace')).toBeInTheDocument()
   })
 

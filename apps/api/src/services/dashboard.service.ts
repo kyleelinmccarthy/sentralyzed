@@ -7,7 +7,7 @@ import { feedback } from '../db/schema/feedback.js'
 import { channels, channelMembers, messages } from '../db/schema/chat.js'
 import { entityAssignments } from '../db/schema/assignments.js'
 import { assignmentsService } from './assignments.service.js'
-import type { MyItemsResponse } from '@sentralyzed/shared/types/dashboard'
+import type { MyItemsResponse } from '@sentral/shared/types/dashboard'
 
 export class DashboardService {
   async getMyItems(userId: string, from: Date, to: Date): Promise<MyItemsResponse> {

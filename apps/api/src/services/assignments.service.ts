@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { entityAssignments } from '../db/schema/assignments.js'
 import { activitiesService } from './activities.service.js'
-import type { AssignableEntityType, AssignmentRole } from '@sentralyzed/shared/types/assignment'
+import type { AssignableEntityType, AssignmentRole } from '@sentral/shared/types/assignment'
 
 export class AssignmentsService {
   async assign(data: {

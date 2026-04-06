@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CATEGORY_LABELS } from '@/lib/expense-helpers'
-import { EXPENSE_CATEGORIES } from '@sentralyzed/shared/types/expense'
-import type { ExpenseCategory, ExpenseStatus } from '@sentralyzed/shared/types/expense'
+import { EXPENSE_CATEGORIES } from '@sentral/shared/types/expense'
+import type { ExpenseCategory, ExpenseStatus } from '@sentral/shared/types/expense'
 import type { ExpenseFilters as Filters } from '@/hooks/use-expenses'
 
 interface Project {

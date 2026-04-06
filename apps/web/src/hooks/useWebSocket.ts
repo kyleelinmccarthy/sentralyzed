@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
-import type { WsMessage } from '@sentralyzed/shared/types/websocket'
+import type { WsMessage } from '@sentral/shared/types/websocket'
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3002'
 

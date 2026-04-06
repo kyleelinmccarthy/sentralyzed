@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ExpenseList } from '@/components/expenses/ExpenseList'
-import type { Expense } from '@sentralyzed/shared/types/expense'
+import type { Expense } from '@sentral/shared/types/expense'
 
 const mockExpense: Expense = {
   id: 'exp-1',

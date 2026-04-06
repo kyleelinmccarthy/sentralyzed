@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CATEGORY_LABELS } from '@/lib/expense-helpers'
 import { parseDollarsToCents } from '@/lib/expense-helpers'
-import { EXPENSE_CATEGORIES } from '@sentralyzed/shared/types/expense'
-import type { Expense, ExpenseCategory } from '@sentralyzed/shared/types/expense'
-import type { CreateExpenseInput } from '@sentralyzed/shared/validators/expense'
+import { EXPENSE_CATEGORIES } from '@sentral/shared/types/expense'
+import type { Expense, ExpenseCategory } from '@sentral/shared/types/expense'
+import type { CreateExpenseInput } from '@sentral/shared/validators/expense'
 
 interface Project {
   id: string

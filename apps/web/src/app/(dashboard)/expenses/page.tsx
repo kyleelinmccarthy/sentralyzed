@@ -13,8 +13,8 @@ import { ExpenseReviewModal } from '@/components/expenses/ExpenseReviewModal'
 import { BudgetPanel } from '@/components/expenses/BudgetPanel'
 import { ReportPanel } from '@/components/expenses/ReportPanel'
 import { Button } from '@/components/ui/button'
-import type { Expense } from '@sentralyzed/shared/types/expense'
-import type { CreateExpenseInput, ReviewExpenseInput } from '@sentralyzed/shared/validators/expense'
+import type { Expense } from '@sentral/shared/types/expense'
+import type { CreateExpenseInput, ReviewExpenseInput } from '@sentral/shared/validators/expense'
 import { Plus, Receipt, PieChart, Wallet } from 'lucide-react'
 
 interface Project {

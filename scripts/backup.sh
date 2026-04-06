@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# PostgreSQL Backup Script for Sentralyzed
+# PostgreSQL Backup Script for Sentral
 # Usage: ./scripts/backup.sh
-# Cron example: 0 2 * * * /path/to/sentralyzed/scripts/backup.sh
+# Cron example: 0 2 * * * /path/to/sentral/scripts/backup.sh
 
-BACKUP_DIR="${BACKUP_DIR:-/backups/sentralyzed}"
-CONTAINER_NAME="${CONTAINER_NAME:-sentralyzed-db}"
-DB_NAME="${DB_NAME:-sentralyzed_dev}"
-DB_USER="${DB_USER:-sentralyzed}"
+BACKUP_DIR="${BACKUP_DIR:-/backups/sentral}"
+CONTAINER_NAME="${CONTAINER_NAME:-sentral-db}"
+DB_NAME="${DB_NAME:-sentral_dev}"
+DB_USER="${DB_USER:-sentral}"
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 
@@ -16,7 +16,7 @@ mkdir -p "$BACKUP_DIR/daily" "$BACKUP_DIR/weekly"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DAY_OF_WEEK=$(date +%u)
-FILENAME="sentralyzed_${TIMESTAMP}.sql.gz"
+FILENAME="sentral_${TIMESTAMP}.sql.gz"
 
 echo "[$(date)] Starting backup..."
 

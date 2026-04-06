@@ -12,7 +12,7 @@ import type {
   FeedbackPriority,
   FeedbackStatus,
   FeedbackResponse,
-} from '@sentralyzed/shared/types/feedback'
+} from '@sentral/shared/types/feedback'
 
 interface FeedbackItem {
   id: string
