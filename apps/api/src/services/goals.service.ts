@@ -1,6 +1,7 @@
 import { eq, and, isNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { goals } from '../db/schema/goals.js'
+import { whereActiveById, softDelete } from './utils/db-helpers.js'
 
 export class GoalsService {
   async list(filters?: { level?: string; status?: string; ownerId?: string }) {
@@ -29,7 +30,7 @@ export class GoalsService {
 
   async getById(id: string) {
     return db.query.goals.findFirst({
-      where: and(eq(goals.id, id), isNull(goals.deletedAt)),
+      where: whereActiveById(goals.id, id, goals.deletedAt),
     })
   }
 
@@ -127,12 +128,7 @@ export class GoalsService {
   }
 
   async softDelete(id: string) {
-    const [goal] = await db
-      .update(goals)
-      .set({ deletedAt: new Date() })
-      .where(eq(goals.id, id))
-      .returning()
-    return goal
+    return softDelete(goals, goals.id, id)
   }
 }
 

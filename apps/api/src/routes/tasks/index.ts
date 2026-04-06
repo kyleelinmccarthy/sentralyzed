@@ -51,13 +51,18 @@ tasksRouter.get('/:id', async (c) => {
 tasksRouter.post('/', zValidator('json', createTaskSchema), async (c) => {
   const data = c.req.valid('json')
   const user = c.get('user')
-  const task = await tasksService.create({ ...data, reporterId: user.id })
+  const task = await tasksService.create({
+    ...data,
+    reporterId: user.id,
+    actorName: user.name,
+  })
   return c.json({ task }, 201)
 })
 
 // Update task
 tasksRouter.patch('/:id', zValidator('json', updateTaskSchema), async (c) => {
-  const task = await tasksService.update(c.req.param('id'), c.req.valid('json'))
+  const user = c.get('user')
+  const task = await tasksService.update(c.req.param('id'), c.req.valid('json'), user.id, user.name)
   if (!task) return c.json({ error: 'Task not found' }, 404)
   return c.json({ task })
 })
@@ -99,6 +104,7 @@ tasksRouter.post(
       c.req.param('id'),
       user.id,
       c.req.valid('json').content,
+      user.name,
     )
     return c.json({ comment }, 201)
   },
@@ -106,7 +112,8 @@ tasksRouter.post(
 
 // Delete task (soft)
 tasksRouter.delete('/:id', async (c) => {
-  const task = await tasksService.softDelete(c.req.param('id'))
+  const user = c.get('user')
+  const task = await tasksService.softDelete(c.req.param('id'), user.id, user.name)
   if (!task) return c.json({ error: 'Task not found' }, 404)
   return c.json({ ok: true })
 })

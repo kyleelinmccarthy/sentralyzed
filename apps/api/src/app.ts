@@ -17,6 +17,13 @@ import { calendarRouter } from './routes/calendar/index.js'
 import { feedbackRouter } from './routes/feedback/index.js'
 import { assignmentsRouter } from './routes/assignments/index.js'
 import { whiteboardsRouter } from './routes/whiteboards/index.js'
+import { expensesRouter } from './routes/expenses/index.js'
+import { entityLinksRouter } from './routes/entity-links/index.js'
+import { clientsRouter } from './routes/clients/index.js'
+import { pollsRouter } from './routes/polls/index.js'
+import { pinRouter } from './routes/pins/index.js'
+import { assetsRouter } from './routes/assets/index.js'
+import { dashboardRouter } from './routes/dashboard/index.js'
 
 export const app = new Hono()
 
@@ -60,3 +67,10 @@ app.route('/calendar', calendarRouter)
 app.route('/feedback', feedbackRouter)
 app.route('/assignments', assignmentsRouter)
 app.route('/whiteboards', whiteboardsRouter)
+app.route('/expenses', expensesRouter)
+app.route('/entity-links', entityLinksRouter)
+app.route('/clients', clientsRouter)
+app.route('/polls', pollsRouter)
+app.route('/pins', pinRouter)
+app.route('/assets', assetsRouter)
+app.route('/dashboard', dashboardRouter)

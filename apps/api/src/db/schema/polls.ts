@@ -11,13 +11,12 @@ import {
 } from 'drizzle-orm/pg-core'
 import { timestamps } from './_helpers'
 import { users } from './users'
+import { POLL_CONTEXT_TYPES } from '@sentralyzed/shared/types/poll'
 
-export const pollContextTypeEnum = pgEnum('poll_context_type', [
-  'channel',
-  'forum',
-  'project',
-  'goal',
-])
+export const pollContextTypeEnum = pgEnum(
+  'poll_context_type',
+  POLL_CONTEXT_TYPES as unknown as [string, ...string[]],
+)
 
 export const polls = pgTable('polls', {
   id: uuid('id').primaryKey().defaultRandom(),

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/stores/auth'
+import { FileAttachments } from '@/components/files/FileAttachments'
 import type {
   FeedbackCategory,
   FeedbackPriority,
@@ -45,7 +46,7 @@ const priorityColors: Record<FeedbackPriority, string> = {
   low: '#9CA3AF',
   medium: '#5C6BC0',
   high: '#FF7043',
-  critical: '#E53935',
+  critical: '#FF7043',
 }
 
 const categoryLabels: Record<FeedbackCategory, string> = {
@@ -109,6 +110,13 @@ export default function FeedbackPage() {
   // Response form state
   const [responseMessage, setResponseMessage] = useState('')
 
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editCategory, setEditCategory] = useState<FeedbackCategory>('bug')
+  const [editPriority, setEditPriority] = useState<FeedbackPriority>('medium')
+
   useEffect(() => {
     void loadFeedback()
   }, [filterStatus])
@@ -138,11 +146,13 @@ export default function FeedbackPage() {
     if (expandedId === id) {
       setExpandedId(null)
       setExpandedItem(null)
+      setIsEditing(false)
       return
     }
     const data = await api.get<{ feedback: FeedbackItem }>(`/feedback/${id}`)
     setExpandedItem(data.feedback)
     setExpandedId(id)
+    setIsEditing(false)
   }
 
   const updateStatus = async (id: string, status: FeedbackStatus, adminNotes?: string) => {
@@ -156,6 +166,32 @@ export default function FeedbackPage() {
     await api.post(`/feedback/${id}/responses`, { message: responseMessage })
     setResponseMessage('')
     // Reload detail
+    const data = await api.get<{ feedback: FeedbackItem }>(`/feedback/${id}`)
+    setExpandedItem(data.feedback)
+  }
+
+  const startEditing = (item: FeedbackItem) => {
+    setEditTitle(item.title)
+    setEditDescription(item.description)
+    setEditCategory(item.category)
+    setEditPriority(item.priority)
+    setIsEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setIsEditing(false)
+  }
+
+  const saveEdit = async (id: string) => {
+    if (!editTitle.trim() || !editDescription.trim()) return
+    await api.patch(`/feedback/${id}`, {
+      title: editTitle,
+      description: editDescription,
+      category: editCategory,
+      priority: editPriority,
+    })
+    setIsEditing(false)
+    void loadFeedback()
     const data = await api.get<{ feedback: FeedbackItem }>(`/feedback/${id}`)
     setExpandedItem(data.feedback)
   }
@@ -271,15 +307,109 @@ export default function FeedbackPage() {
                 {expandedId === item.id && expandedItem && (
                   <div className="px-4 pb-4 border-t border-light-border dark:border-dark-border bg-light-muted dark:bg-dark-bg">
                     <div className="pt-4 space-y-4">
-                      {/* Description */}
-                      <div>
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
-                          Description
-                        </h4>
-                        <p className="text-sm text-jet dark:text-dark-text whitespace-pre-wrap">
-                          {expandedItem.description}
-                        </p>
-                      </div>
+                      {/* Edit Button */}
+                      {expandedItem.submittedBy === user?.id && !isEditing && (
+                        <div className="flex justify-end">
+                          <Button variant="outline" onClick={() => startEditing(expandedItem)}>
+                            <svg
+                              className="w-4 h-4 mr-1.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                            Edit Feedback
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Editable Fields */}
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div>
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
+                              Title
+                            </h4>
+                            <Input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
+                              Description
+                            </h4>
+                            <textarea
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              rows={4}
+                              className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary focus:outline-none focus:ring-2 focus:ring-indigo/20 focus:border-indigo resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <div>
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
+                                Category
+                              </h4>
+                              <select
+                                value={editCategory}
+                                onChange={(e) =>
+                                  setEditCategory(e.target.value as FeedbackCategory)
+                                }
+                                className="px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
+                              >
+                                {CATEGORIES.map((c) => (
+                                  <option key={c} value={c}>
+                                    {categoryLabels[c]}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
+                                Priority
+                              </h4>
+                              <select
+                                value={editPriority}
+                                onChange={(e) =>
+                                  setEditPriority(e.target.value as FeedbackPriority)
+                                }
+                                className="px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
+                              >
+                                {PRIORITIES.map((p) => (
+                                  <option key={p} value={p}>
+                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <Button onClick={() => void saveEdit(expandedItem.id)}>
+                              Save Changes
+                            </Button>
+                            <Button variant="outline" onClick={cancelEditing}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Description (read-only) */
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-french-gray dark:text-dark-text-secondary mb-1">
+                            Description
+                          </h4>
+                          <p className="text-sm text-jet dark:text-dark-text whitespace-pre-wrap">
+                            {expandedItem.description}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Admin Notes */}
                       {expandedItem.adminNotes && (
@@ -355,6 +485,9 @@ export default function FeedbackPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Attachments */}
+                      <FileAttachments entityType="feedback" entityId={item.id} />
 
                       {/* Delete */}
                       <div className="flex justify-end pt-2">

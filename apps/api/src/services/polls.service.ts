@@ -2,6 +2,8 @@ import { eq, and, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { polls, pollOptions, pollVotes } from '../db/schema/polls.js'
 import type { CreatePollInput } from '@sentralyzed/shared/validators/poll'
+import type { PollContextType } from '@sentralyzed/shared/types/poll'
+import { DEFAULT_PAGE_LIMIT } from './utils/db-helpers.js'
 
 export class PollsService {
   async create(input: CreatePollInput, userId: string) {
@@ -31,16 +33,12 @@ export class PollsService {
   async getAll(userId: string) {
     const allPolls = await db.query.polls.findMany({
       orderBy: (p, { desc }) => [desc(p.createdAt)],
-      limit: 50,
+      limit: DEFAULT_PAGE_LIMIT,
     })
     return Promise.all(allPolls.map((poll) => this.enrichPoll(poll, userId)))
   }
 
-  async getByContext(
-    contextType: 'channel' | 'forum' | 'project' | 'goal',
-    contextId: string,
-    userId: string,
-  ) {
+  async getByContext(contextType: PollContextType, contextId: string, userId: string) {
     const contextPolls = await db.query.polls.findMany({
       where: and(eq(polls.contextType, contextType), eq(polls.contextId, contextId)),
       orderBy: (p, { desc }) => [desc(p.createdAt)],
@@ -109,26 +107,35 @@ export class PollsService {
   }
 
   private async enrichPoll(poll: typeof polls.$inferSelect, userId: string) {
-    const options = await db.query.pollOptions.findMany({
-      where: eq(pollOptions.pollId, poll.id),
-      orderBy: (o, { asc }) => [asc(o.position)],
-    })
+    const [options, votes] = await Promise.all([
+      db.query.pollOptions.findMany({
+        where: eq(pollOptions.pollId, poll.id),
+        orderBy: (o, { asc }) => [asc(o.position)],
+      }),
+      db.query.pollVotes.findMany({
+        where: eq(pollVotes.pollId, poll.id),
+      }),
+    ])
 
-    const votes = await db.query.pollVotes.findMany({
-      where: eq(pollVotes.pollId, poll.id),
-    })
+    const voteCounts = new Map<string, number>()
+    const uniqueVoters = new Set<string>()
+    const userVotes: string[] = []
 
-    const userVotes = votes.filter((v) => v.userId === userId).map((v) => v.optionId)
+    for (const vote of votes) {
+      voteCounts.set(vote.optionId, (voteCounts.get(vote.optionId) ?? 0) + 1)
+      uniqueVoters.add(vote.userId)
+      if (vote.userId === userId) userVotes.push(vote.optionId)
+    }
 
     const optionsWithCount = options.map((opt) => ({
       ...opt,
-      voteCount: votes.filter((v) => v.optionId === opt.id).length,
+      voteCount: voteCounts.get(opt.id) ?? 0,
     }))
 
     return {
       ...poll,
       options: optionsWithCount,
-      totalVotes: new Set(votes.map((v) => v.userId)).size,
+      totalVotes: uniqueVoters.size,
       userVotes,
     }
   }

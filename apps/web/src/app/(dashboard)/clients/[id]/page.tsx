@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
+import { FileAttachments } from '@/components/files/FileAttachments'
 
 interface Client {
   id: string
@@ -39,7 +40,23 @@ const statusOptions = ['lead', 'active', 'inactive', 'churned'] as const
 const roleOptions = ['sponsor', 'stakeholder', 'end_user'] as const
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const phoneRegex = /^[+]?[\d\s\-().]{7,50}$/
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+}
+
+function stripPhoneFormatting(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function isValidPhone(value: string): boolean {
+  const digits = stripPhoneFormatting(value)
+  return digits.length === 0 || digits.length === 10
+}
 
 const statusColors: Record<string, string> = {
   lead: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
@@ -81,7 +98,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     if (editData.name !== undefined && !editData.name?.trim()) newErrors.name = 'Name is required'
     if (editData.email && !emailRegex.test(editData.email))
       newErrors.email = 'Invalid email address'
-    if (editData.phone && !phoneRegex.test(editData.phone)) newErrors.phone = 'Invalid phone number'
+    if (editData.phone && !isValidPhone(editData.phone))
+      newErrors.phone = 'Phone number must be 10 digits'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -91,7 +109,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     if (!validateEdit()) return
     setSaving(true)
     try {
-      const data = await api.patch<{ client: Client }>(`/clients/${id}`, editData)
+      const payload = {
+        ...editData,
+        ...(editData.phone ? { phone: stripPhoneFormatting(editData.phone) || null } : {}),
+      }
+      const data = await api.patch<{ client: Client }>(`/clients/${id}`, payload)
       setClient(data.client)
       setErrors({})
       setIsEditing(false)
@@ -151,7 +173,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </span>
         <Button
           variant={isEditing ? 'primary' : 'outline'}
-          size="sm"
           disabled={saving}
           onClick={() => {
             if (isEditing) {
@@ -160,7 +181,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               setEditData({
                 name: client.name,
                 email: client.email,
-                phone: client.phone,
+                phone: client.phone ? formatPhoneNumber(client.phone) : null,
                 company: client.company,
                 notes: client.notes,
                 status: client.status,
@@ -170,13 +191,34 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             }
           }}
         >
-          {saving ? 'Saving...' : isEditing ? 'Save' : 'Edit'}
+          {saving ? (
+            'Saving...'
+          ) : isEditing ? (
+            'Save Changes'
+          ) : (
+            <>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Edit Client
+            </>
+          )}
         </Button>
       </div>
 
       {/* Assigned Users */}
       <Card className="p-4 mb-6">
         <UserAssignmentPicker entityType="client" entityId={id} />
+      </Card>
+
+      {/* File Attachments */}
+      <Card className="p-4 mb-6">
+        <FileAttachments entityType="client" entityId={id} />
       </Card>
 
       {/* Client Details */}
@@ -224,7 +266,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                     type="tel"
                     value={editData.phone || ''}
                     onChange={(e) => {
-                      setEditData({ ...editData, phone: e.target.value || null })
+                      const formatted = formatPhoneNumber(e.target.value)
+                      setEditData({ ...editData, phone: formatted || null })
                       setErrors((prev) => {
                         const { phone: _, ...rest } = prev
                         return rest
@@ -273,7 +316,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                   <p className="text-xs text-french-gray dark:text-dark-text-secondary mb-0.5">
                     Phone
                   </p>
-                  <p className="text-sm text-jet dark:text-dark-text">{client.phone || '—'}</p>
+                  <p className="text-sm text-jet dark:text-dark-text">
+                    {client.phone ? formatPhoneNumber(client.phone) : '—'}
+                  </p>
                 </div>
               </div>
               {client.notes ? (

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
+import type { ZodError } from 'zod'
 import {
   createClientSchema,
   updateClientSchema,
@@ -8,6 +9,13 @@ import {
 import { authMiddleware } from '../../middleware/auth.js'
 import { clientsService } from '../../services/clients.service.js'
 import type { AppEnv } from '../../types.js'
+
+const validationHook = (result: { success: boolean; error?: ZodError }, c: any) => {
+  if (!result.success) {
+    const messages = result.error!.issues.map((i) => i.message).join(', ')
+    return c.json({ error: messages }, 400)
+  }
+}
 
 const clientsRouter = new Hono<AppEnv>()
 
@@ -29,7 +37,7 @@ clientsRouter.get('/:id', async (c) => {
 })
 
 // Create client
-clientsRouter.post('/', zValidator('json', createClientSchema), async (c) => {
+clientsRouter.post('/', zValidator('json', createClientSchema, validationHook), async (c) => {
   const data = c.req.valid('json')
   const user = c.get('user')
   const client = await clientsService.create({ ...data, ownerId: user.id })
@@ -37,7 +45,7 @@ clientsRouter.post('/', zValidator('json', createClientSchema), async (c) => {
 })
 
 // Update client
-clientsRouter.patch('/:id', zValidator('json', updateClientSchema), async (c) => {
+clientsRouter.patch('/:id', zValidator('json', updateClientSchema, validationHook), async (c) => {
   const client = await clientsService.update(c.req.param('id'), c.req.valid('json'))
   if (!client) return c.json({ error: 'Client not found' }, 404)
   return c.json({ client })
@@ -51,17 +59,21 @@ clientsRouter.delete('/:id', async (c) => {
 })
 
 // Associate project with client
-clientsRouter.post('/:id/projects', zValidator('json', clientProjectSchema), async (c) => {
-  const { projectId, role, startDate, endDate } = c.req.valid('json')
-  const clientProject = await clientsService.addProject(
-    c.req.param('id'),
-    projectId,
-    role as any,
-    startDate ? new Date(startDate) : undefined,
-    endDate ? new Date(endDate) : undefined,
-  )
-  return c.json({ clientProject }, 201)
-})
+clientsRouter.post(
+  '/:id/projects',
+  zValidator('json', clientProjectSchema, validationHook),
+  async (c) => {
+    const { projectId, role, startDate, endDate } = c.req.valid('json')
+    const clientProject = await clientsService.addProject(
+      c.req.param('id'),
+      projectId,
+      role as any,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+    )
+    return c.json({ clientProject }, 201)
+  },
+)
 
 // Get projects for a client
 clientsRouter.get('/:id/projects', async (c) => {

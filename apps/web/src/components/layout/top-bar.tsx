@@ -1,6 +1,7 @@
 'use client'
 
 import { Search } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 
 export function TopBar() {
   return (
@@ -15,6 +16,9 @@ export function TopBar() {
           placeholder="Search projects, tasks, messages..."
           className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-light-border dark:border-dark-border bg-light-muted dark:bg-dark-card text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary focus:outline-none focus:ring-2 focus:ring-indigo/20 focus:border-indigo transition-colors"
         />
+      </div>
+      <div className="ml-auto">
+        <NotificationBell />
       </div>
     </header>
   )

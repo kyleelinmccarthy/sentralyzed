@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
+import { FileAttachments } from '@/components/files/FileAttachments'
 
 interface Project {
   id: string
@@ -32,10 +33,10 @@ const statusLabels: Record<string, string> = {
   done: 'Done',
 }
 const priorityColors: Record<string, string> = {
-  urgent: '#E53935',
-  high: '#FF7043',
+  urgent: '#FF7043',
+  high: '#F59E0B',
   medium: '#5C6BC0',
-  low: '#B0BEC5',
+  low: '#9CA3AF',
 }
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,6 +45,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [tasks, setTasks] = useState<Task[]>([])
   const [tab, setTab] = useState<'kanban' | 'list'>('kanban')
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [editColor, setEditColor] = useState('')
 
   useEffect(() => {
     void loadData()
@@ -56,6 +62,32 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     ])
     setProject(projData.project)
     setTasks(tasksData.tasks)
+  }
+
+  const startEditProject = () => {
+    if (!project) return
+    setEditName(project.name)
+    setEditDescription(project.description || '')
+    setEditStatus(project.status)
+    setEditColor(project.color)
+    setIsEditing(true)
+  }
+
+  const saveProject = async () => {
+    if (!editName.trim()) return
+    await api.patch(`/projects/${id}`, {
+      name: editName.trim(),
+      description: editDescription || undefined,
+      status: editStatus,
+      color: editColor,
+    })
+    setIsEditing(false)
+    void loadData()
+  }
+
+  const deleteProject = async () => {
+    await api.delete(`/projects/${id}`)
+    window.location.href = '/projects'
   }
 
   const createTask = async () => {
@@ -83,6 +115,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           ) : null}
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={startEditProject}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+            Edit Project
+          </Button>
           <Button
             variant={tab === 'kanban' ? 'primary' : 'outline'}
             size="sm"
@@ -100,9 +143,66 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {isEditing && (
+        <Card className="p-4 mb-6">
+          <h3 className="text-sm font-semibold text-jet dark:text-dark-text mb-3">Edit Project</h3>
+          <div className="space-y-3">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Project name"
+            />
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Description (optional)"
+              rows={2}
+              className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none"
+            />
+            <div className="flex gap-2">
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+                className="flex-1 rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
+              >
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+                <option value="archived">Archived</option>
+              </select>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-french-gray dark:text-dark-text-secondary">
+                  Color
+                </label>
+                <input
+                  type="color"
+                  value={editColor}
+                  onChange={(e) => setEditColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-light-border dark:border-dark-border bg-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button onClick={() => void saveProject()}>Save Changes</Button>
+              <Button variant="outline" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => void deleteProject()}>
+                Delete Project
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Assigned Users */}
       <Card className="p-4 mb-6">
         <UserAssignmentPicker entityType="project" entityId={id} />
+      </Card>
+
+      {/* File Attachments */}
+      <Card className="p-4 mb-6">
+        <FileAttachments entityType="project" entityId={id} />
       </Card>
 
       {/* Quick add task */}

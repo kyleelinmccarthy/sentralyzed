@@ -37,7 +37,7 @@ export async function handleMessage(connId: string, data: string) {
 
   switch (parsed.type) {
     case 'chat:message':
-      await handleChatMessage(conn.userId, conn.userName, parsed.payload)
+      await handleChatMessage(connId, conn.userId, conn.userName, parsed.payload)
       break
     case 'chat:typing':
       await handleTyping(conn.userId, conn.userName, parsed.payload)
@@ -51,11 +51,16 @@ export async function handleMessage(connId: string, data: string) {
   }
 }
 
-async function handleChatMessage(userId: string, userName: string, payload: unknown) {
+async function handleChatMessage(
+  connId: string,
+  userId: string,
+  userName: string,
+  payload: unknown,
+) {
   const parsed = chatMessagePayloadSchema.safeParse(payload)
   if (!parsed.success) return
 
-  const { channelId, content, replyToId } = parsed.data
+  const { channelId, content, replyToId, tempId } = parsed.data
 
   // Save to database
   const [msg] = await db
@@ -67,6 +72,20 @@ async function handleChatMessage(userId: string, userName: string, payload: unkn
       replyToId,
     })
     .returning()
+
+  // Send ack to sender with real message ID so they can replace the temp ID
+  if (tempId) {
+    const senderConn = getConnection(connId)
+    if (senderConn && senderConn.ws.readyState === 1) {
+      senderConn.ws.send(
+        JSON.stringify({
+          type: 'chat:message:ack',
+          payload: { tempId, messageId: msg!.id },
+          timestamp: new Date().toISOString(),
+        }),
+      )
+    }
+  }
 
   // Get channel member IDs
   const members = await db.query.channelMembers.findMany({

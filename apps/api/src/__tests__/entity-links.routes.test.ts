@@ -15,6 +15,13 @@ const mockFindBySource = vi.fn()
 const mockFindByTarget = vi.fn()
 const mockRemove = vi.fn()
 
+class EntityNotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'EntityNotFoundError'
+  }
+}
+
 vi.mock('../services/entity-links.service.js', () => ({
   entityLinksService: {
     create: mockCreate,
@@ -22,6 +29,7 @@ vi.mock('../services/entity-links.service.js', () => ({
     findByTarget: mockFindByTarget,
     remove: mockRemove,
   },
+  EntityNotFoundError,
 }))
 
 const { entityLinksRouter } = await import('../routes/entity-links/index.js')
@@ -68,6 +76,44 @@ describe('Entity Links Routes', () => {
         targetId: '550e8400-e29b-41d4-a716-446655440002',
         createdBy: 'user-1',
       })
+    })
+
+    it('returns 404 when source entity does not exist', async () => {
+      mockCreate.mockRejectedValue(new EntityNotFoundError('Source message not found'))
+
+      const res = await app.request('/entity-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceType: 'message',
+          sourceId: '550e8400-e29b-41d4-a716-446655440001',
+          targetType: 'task',
+          targetId: '550e8400-e29b-41d4-a716-446655440002',
+        }),
+      })
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toBe('Source message not found')
+    })
+
+    it('returns 404 when target entity does not exist', async () => {
+      mockCreate.mockRejectedValue(new EntityNotFoundError('Target task not found'))
+
+      const res = await app.request('/entity-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceType: 'message',
+          sourceId: '550e8400-e29b-41d4-a716-446655440001',
+          targetType: 'task',
+          targetId: '550e8400-e29b-41d4-a716-446655440002',
+        }),
+      })
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toBe('Target task not found')
     })
 
     it('rejects invalid sourceType with 400', async () => {

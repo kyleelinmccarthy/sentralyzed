@@ -2,6 +2,7 @@ import { eq, and, desc, lt, isNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { channels, channelMembers, messages, reactions } from '../db/schema/chat.js'
 import { users } from '../db/schema/users.js'
+import { DEFAULT_PAGE_LIMIT } from './utils/db-helpers.js'
 
 export class ChatService {
   async listChannels(userId: string) {
@@ -15,7 +16,38 @@ export class ChatService {
       where: sql`${channels.id} IN ${channelIds}`,
     })
 
-    // Add unread counts and resolve DM display names
+    // Batch-fetch all DM members and other users upfront to avoid N+1 queries
+    const dmChannels = channelList.filter((ch) => ch.type === 'direct')
+    const dmMembersMap = new Map<string, string>()
+
+    if (dmChannels.length > 0) {
+      const dmChannelIds = dmChannels.map((ch) => ch.id)
+      const allDmMembers = await db.query.channelMembers.findMany({
+        where: sql`${channelMembers.channelId} IN ${dmChannelIds}`,
+      })
+
+      const otherUserIds: string[] = []
+      for (const ch of dmChannels) {
+        const otherMember = allDmMembers.find((m) => m.channelId === ch.id && m.userId !== userId)
+        if (otherMember) {
+          otherUserIds.push(otherMember.userId)
+          dmMembersMap.set(ch.id, otherMember.userId)
+        }
+      }
+
+      if (otherUserIds.length > 0) {
+        const otherUsers = await db.query.users.findMany({
+          where: sql`${users.id} IN ${otherUserIds}`,
+          columns: { id: true, name: true },
+        })
+        const userNameMap = new Map(otherUsers.map((u) => [u.id, u.name]))
+        for (const [channelId, otherUserId] of dmMembersMap) {
+          const name = userNameMap.get(otherUserId)
+          if (name) dmMembersMap.set(channelId, name)
+        }
+      }
+    }
+
     return Promise.all(
       channelList.map(async (ch) => {
         const membership = memberships.find((m) => m.channelId === ch.id)
@@ -26,26 +58,13 @@ export class ChatService {
                 where: and(
                   eq(messages.channelId, ch.id),
                   isNull(messages.deletedAt),
-                  sql`${messages.createdAt} > ${lastRead}`,
+                  sql`${messages.createdAt} > ${lastRead.toISOString()}`,
                 ),
               })
             ).length
           : 0
 
-        let displayName = ch.name
-        if (ch.type === 'direct') {
-          const members = await db.query.channelMembers.findMany({
-            where: eq(channelMembers.channelId, ch.id),
-          })
-          const otherMemberId = members.find((m) => m.userId !== userId)?.userId
-          if (otherMemberId) {
-            const otherUser = await db.query.users.findFirst({
-              where: eq(users.id, otherMemberId),
-              columns: { name: true },
-            })
-            if (otherUser) displayName = otherUser.name
-          }
-        }
+        const displayName = ch.type === 'direct' ? (dmMembersMap.get(ch.id) ?? ch.name) : ch.name
 
         return { ...ch, name: displayName, unreadCount }
       }),
@@ -60,19 +79,15 @@ export class ChatService {
     createdBy: string
   }) {
     const [channel] = await db.insert(channels).values(data).returning()
-    // Add creator as member
     await db.insert(channelMembers).values({ channelId: channel!.id, userId: data.createdBy })
     return channel!
   }
 
   async getOrCreateDM(userId1: string, userId2: string) {
-    // Find existing DM channel between these two users
-    const user1Channels = await db.query.channelMembers.findMany({
-      where: eq(channelMembers.userId, userId1),
-    })
-    const user2Channels = await db.query.channelMembers.findMany({
-      where: eq(channelMembers.userId, userId2),
-    })
+    const [user1Channels, user2Channels] = await Promise.all([
+      db.query.channelMembers.findMany({ where: eq(channelMembers.userId, userId1) }),
+      db.query.channelMembers.findMany({ where: eq(channelMembers.userId, userId2) }),
+    ])
     const user1ChannelIds = new Set(user1Channels.map((m) => m.channelId))
     const sharedChannelIds = user2Channels
       .filter((m) => user1ChannelIds.has(m.channelId))
@@ -85,7 +100,6 @@ export class ChatService {
       if (existing) return existing
     }
 
-    // Create new DM channel
     const [channel] = await db
       .insert(channels)
       .values({
@@ -101,7 +115,14 @@ export class ChatService {
     return channel!
   }
 
-  async getMessages(channelId: string, cursor?: string, limit = 50) {
+  async updateChannel(id: string, data: { name?: string; description?: string }) {
+    const channel = await db.query.channels.findFirst({ where: eq(channels.id, id) })
+    if (!channel || channel.type === 'direct') return null
+    const [updated] = await db.update(channels).set(data).where(eq(channels.id, id)).returning()
+    return updated
+  }
+
+  async getMessages(channelId: string, cursor?: string, limit = DEFAULT_PAGE_LIMIT) {
     const conditions = [eq(messages.channelId, channelId), isNull(messages.deletedAt)]
     if (cursor) {
       conditions.push(lt(messages.createdAt, new Date(cursor)))
@@ -142,10 +163,9 @@ export class ChatService {
     if (existing) {
       await db.delete(reactions).where(eq(reactions.id, existing.id))
       return 'removed'
-    } else {
-      await db.insert(reactions).values({ messageId, userId, emoji })
-      return 'added'
     }
+    await db.insert(reactions).values({ messageId, userId, emoji })
+    return 'added'
   }
 
   async getReactions(messageId: string) {

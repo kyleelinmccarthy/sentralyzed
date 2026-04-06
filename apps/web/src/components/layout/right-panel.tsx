@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { api } from '@/lib/api'
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -17,8 +18,17 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   )
 }
 
+interface CalendarEvent {
+  id: string
+  title: string
+  startTime: string
+  endTime: string
+  color: string
+}
+
 function MiniCalendar() {
   const [offset, setOffset] = useState(0)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const now = new Date()
   const viewDate = new Date(now.getFullYear(), now.getMonth() + offset, 1)
   const month = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -28,6 +38,19 @@ function MiniCalendar() {
 
   const firstDay = viewDate.getDay()
   const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
+
+  useEffect(() => {
+    const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1)
+    const end = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0)
+    api
+      .get<{ events: CalendarEvent[] }>(
+        `/calendar/events?start=${start.toISOString()}&end=${end.toISOString()}`,
+      )
+      .then((data) => setEvents(data.events))
+      .catch(() => setEvents([]))
+  }, [offset])
+
+  const eventDays = new Set(events.map((e) => new Date(e.startTime).getDate()))
 
   const cells: (number | null)[] = []
   for (let i = 0; i < firstDay; i++) cells.push(null)
@@ -61,12 +84,15 @@ function MiniCalendar() {
         {cells.map((day, i) => (
           <div
             key={i}
-            className={`py-1 rounded-md text-[12px]
+            className={`relative py-1 rounded-md text-[12px]
               ${day === today ? 'bg-indigo text-white font-semibold' : 'text-jet dark:text-dark-text'}
               ${day && day !== today ? 'hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer' : ''}
             `}
           >
             {day || ''}
+            {day && eventDays.has(day) && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo" />
+            )}
           </div>
         ))}
       </div>
@@ -84,8 +110,8 @@ export function RightPanel() {
       <div className="grid grid-cols-2 gap-3 mb-6">
         <StatCard label="Planned Today" value={0} color="#5C6BC0" />
         <StatCard label="Finished Yesterday" value={0} color="#26A69A" />
-        <StatCard label="Due This Week" value={0} color="#FF7043" />
-        <StatCard label="Overdue" value={0} color="#E53935" />
+        <StatCard label="Due This Week" value={0} color="#F59E0B" />
+        <StatCard label="Overdue" value={0} color="#FF7043" />
       </div>
 
       <MiniCalendar />

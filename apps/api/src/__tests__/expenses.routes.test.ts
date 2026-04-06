@@ -30,6 +30,7 @@ const mockCreateBudget = vi.fn()
 const mockListBudgets = vi.fn()
 const mockUpdateBudget = vi.fn()
 const mockDeleteBudget = vi.fn()
+const mockGetBudgetWithSpent = vi.fn()
 
 vi.mock('../services/expenses.service.js', () => ({
   expensesService: {
@@ -44,6 +45,7 @@ vi.mock('../services/expenses.service.js', () => ({
     listBudgets: mockListBudgets,
     updateBudget: mockUpdateBudget,
     deleteBudget: mockDeleteBudget,
+    getBudgetWithSpent: mockGetBudgetWithSpent,
   },
 }))
 
@@ -83,6 +85,33 @@ describe('Expenses Routes', () => {
       const body = await res.json()
       expect(body.expense).toEqual(expense)
       expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining(validExpenseBody), 'user-1')
+    })
+
+    it('creates an expense with assetId', async () => {
+      const expense = {
+        id: 'exp-2',
+        ...validExpenseBody,
+        assetId: '00000000-0000-0000-0000-000000000001',
+        status: 'pending',
+      }
+      mockCreate.mockResolvedValue(expense)
+
+      const res = await app.request('/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validExpenseBody,
+          assetId: '00000000-0000-0000-0000-000000000001',
+        }),
+      })
+
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.expense.assetId).toBe('00000000-0000-0000-0000-000000000001')
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ assetId: '00000000-0000-0000-0000-000000000001' }),
+        'user-1',
+      )
     })
 
     it('rejects missing description with 400', async () => {
@@ -383,6 +412,35 @@ describe('Expenses Routes', () => {
       const res = await app.request('/expenses/budgets/budget-1', { method: 'DELETE' })
 
       expect(res.status).toBe(403)
+    })
+  })
+
+  describe('GET /expenses/budgets/:id/spending', () => {
+    it('returns budget with spent amounts', async () => {
+      const budgetWithSpent = {
+        id: 'budget-1',
+        name: 'Software',
+        amountCents: 50000,
+        spentCents: 20000,
+        remainingCents: 30000,
+      }
+      mockGetBudgetWithSpent.mockResolvedValue(budgetWithSpent)
+
+      const res = await app.request('/expenses/budgets/budget-1/spending')
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.budget).toEqual(budgetWithSpent)
+      expect(body.budget.spentCents).toBe(20000)
+      expect(body.budget.remainingCents).toBe(30000)
+    })
+
+    it('returns 404 when budget not found', async () => {
+      mockGetBudgetWithSpent.mockResolvedValue(null)
+
+      const res = await app.request('/expenses/budgets/nonexistent/spending')
+
+      expect(res.status).toBe(404)
     })
   })
 })

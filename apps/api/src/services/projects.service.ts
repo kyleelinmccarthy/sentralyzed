@@ -1,6 +1,7 @@
 import { eq, and, isNull, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { projects, projectMembers } from '../db/schema/projects.js'
+import { whereActiveById, softDelete } from './utils/db-helpers.js'
 
 export class ProjectsService {
   async list(filters?: { status?: string; search?: string }) {
@@ -20,7 +21,7 @@ export class ProjectsService {
 
   async getById(id: string) {
     return db.query.projects.findFirst({
-      where: and(eq(projects.id, id), isNull(projects.deletedAt)),
+      where: whereActiveById(projects.id, id, projects.deletedAt),
     })
   }
 
@@ -87,12 +88,7 @@ export class ProjectsService {
   }
 
   async softDelete(id: string) {
-    const [project] = await db
-      .update(projects)
-      .set({ deletedAt: new Date() })
-      .where(eq(projects.id, id))
-      .returning()
-    return project
+    return softDelete(projects, projects.id, id)
   }
 }
 

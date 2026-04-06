@@ -1,4 +1,19 @@
-export type PollContextType = 'channel' | 'forum' | 'project' | 'goal'
+export const POLL_CONTEXT_TYPES = [
+  'channel',
+  'forum',
+  'project',
+  'goal',
+  'task',
+  'client',
+  'expense',
+  'calendar',
+  'user',
+  'whiteboard',
+  'feedback',
+  'asset',
+] as const
+
+export type PollContextType = (typeof POLL_CONTEXT_TYPES)[number]
 
 export interface Poll {
   id: string

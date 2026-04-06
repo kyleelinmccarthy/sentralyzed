@@ -16,6 +16,7 @@ interface ToolbarProps {
   fill: string
   strokeStyle: StrokeStyle
   opacity: number
+  textColor: string
   fontFamily: FontFamily
   fontSize: FontSize
   textAlign: TextAlign
@@ -25,6 +26,7 @@ interface ToolbarProps {
   onFillChange: (fill: string) => void
   onStrokeStyleChange: (style: StrokeStyle) => void
   onOpacityChange: (opacity: number) => void
+  onTextColorChange: (color: string) => void
   onFontFamilyChange: (family: FontFamily) => void
   onFontSizeChange: (size: FontSize) => void
   onTextAlignChange: (align: TextAlign) => void
@@ -37,10 +39,29 @@ interface ToolbarProps {
   onPanReset: () => void
   hasSelection: boolean
   onReorder: (direction: ReorderDirection) => void
+  selectedFrameLabel?: string
+  onFrameLabelChange: (label: string) => void
 }
 
-const tools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
-  { type: 'select', label: 'Select', icon: '↖', shortcut: 'V' },
+const ImageIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
+    <circle cx="5" cy="6" r="1.5" />
+    <path d="M14.5 10.5 L10.5 7 L6.5 11 L4.5 9.5 L1.5 12" />
+  </svg>
+)
+
+const tools: { type: ToolType; label: string; icon: React.ReactNode; shortcut: string }[] = [
+  { type: 'select', label: 'Select (Alt+drag: lasso)', icon: '↖', shortcut: 'V' },
   { type: 'hand', label: 'Hand (Pan)', icon: '✋', shortcut: 'H' },
   { type: 'rectangle', label: 'Rectangle', icon: '▭', shortcut: 'R' },
   { type: 'diamond', label: 'Diamond', icon: '◇', shortcut: 'D' },
@@ -49,28 +70,23 @@ const tools: { type: ToolType; label: string; icon: string; shortcut: string }[]
   { type: 'arrow', label: 'Arrow', icon: '→', shortcut: 'A' },
   { type: 'freehand', label: 'Draw', icon: '✎', shortcut: 'P' },
   { type: 'text', label: 'Text', icon: 'T', shortcut: 'T' },
+  { type: 'image', label: 'Image', icon: <ImageIcon />, shortcut: 'I' },
+  { type: 'frame', label: 'Frame', icon: '⬚', shortcut: 'F' },
+  { type: 'embed', label: 'Embed', icon: '🔗', shortcut: 'W' },
+  { type: 'laser', label: 'Laser', icon: '🔴', shortcut: 'K' },
   { type: 'eraser', label: 'Eraser', icon: '⌫', shortcut: 'E' },
 ]
 
-const strokeColors = [
-  '#333333',
+const paletteColors = [
+  '#2D2D2D',
   '#5C6BC0',
-  '#E53935',
-  '#26A69A',
   '#FF7043',
+  '#26A69A',
+  '#3B82F6',
+  '#F59E0B',
+  '#E53935',
   '#7B1FA2',
-  '#607D8B',
-  '#FFFFFF',
-]
-
-const fillColors = [
-  'transparent',
-  '#D1C4E9',
-  '#FFCDD2',
-  '#B2DFDB',
-  '#FFE0B2',
-  '#E1BEE7',
-  '#CFD8DC',
+  '#64748B',
   '#FFFFFF',
 ]
 
@@ -97,6 +113,65 @@ const textAligns: { value: TextAlign; icon: string; label: string }[] = [
 
 function Divider() {
   return <div className="w-px h-6 bg-gray-200 mx-1" />
+}
+
+function ColorPicker({
+  label,
+  colors,
+  value,
+  onChange,
+  allowTransparent,
+}: {
+  label: string
+  colors: string[]
+  value: string
+  onChange: (color: string) => void
+  allowTransparent?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-[10px] text-french-gray">{label}</span>
+      {allowTransparent && (
+        <button
+          onClick={() => onChange('transparent')}
+          className={`w-5 h-5 rounded-full border-2 ${value === 'transparent' ? 'border-indigo' : 'border-gray-200'}`}
+          style={{
+            backgroundImage:
+              'linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%), linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%)',
+            backgroundSize: '6px 6px',
+            backgroundPosition: '0 0, 3px 3px',
+          }}
+          title="No fill"
+        />
+      )}
+      {colors.map((c) => (
+        <button
+          key={c}
+          onClick={() => onChange(c)}
+          className={`w-5 h-5 rounded-full border-2 ${value === c ? 'border-indigo' : 'border-gray-200'}`}
+          style={{ backgroundColor: c }}
+          title={c}
+        />
+      ))}
+      <label
+        className="relative w-5 h-5 rounded-full overflow-hidden border-2 border-gray-200 cursor-pointer"
+        title="Custom color"
+      >
+        <input
+          type="color"
+          value={value === 'transparent' ? '#ffffff' : value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+        <span
+          className="block w-full h-full"
+          style={{
+            background: `conic-gradient(red, yellow, lime, aqua, blue, magenta, red)`,
+          }}
+        />
+      </label>
+    </div>
+  )
 }
 
 function ToggleButton({
@@ -147,38 +222,23 @@ export function Toolbar(props: ToolbarProps) {
         <Divider />
 
         {/* Stroke color */}
-        <span className="text-[10px] text-french-gray">Stroke</span>
-        {strokeColors.map((c) => (
-          <button
-            key={`s-${c}`}
-            onClick={() => props.onColorChange(c)}
-            className={`w-6 h-6 rounded-full border-2 ${props.color === c ? 'border-indigo' : 'border-gray-200'}`}
-            style={{ backgroundColor: c }}
-            title={`Stroke: ${c}`}
-          />
-        ))}
+        <ColorPicker
+          label="Stroke"
+          colors={paletteColors}
+          value={props.color}
+          onChange={props.onColorChange}
+        />
 
         <Divider />
 
-        {/* Background color */}
-        <span className="text-[10px] text-french-gray">Bg</span>
-        {fillColors.map((c) => (
-          <button
-            key={`f-${c}`}
-            onClick={() => props.onFillChange(c)}
-            className={`w-6 h-6 rounded-full border-2 ${props.fill === c ? 'border-indigo' : 'border-gray-200'}`}
-            style={{
-              backgroundColor: c === 'transparent' ? undefined : c,
-              backgroundImage:
-                c === 'transparent'
-                  ? 'linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%), linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%)'
-                  : undefined,
-              backgroundSize: c === 'transparent' ? '6px 6px' : undefined,
-              backgroundPosition: c === 'transparent' ? '0 0, 3px 3px' : undefined,
-            }}
-            title={c === 'transparent' ? 'No fill' : `Background: ${c}`}
-          />
-        ))}
+        {/* Fill color */}
+        <ColorPicker
+          label="Fill"
+          colors={paletteColors}
+          value={props.fill}
+          onChange={props.onFillChange}
+          allowTransparent
+        />
 
         <Divider />
 
@@ -274,6 +334,16 @@ export function Toolbar(props: ToolbarProps) {
       {/* Text options (shown when text tool is active) */}
       {isTextTool && (
         <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
+          {/* Text color */}
+          <ColorPicker
+            label="Color"
+            colors={paletteColors}
+            value={props.textColor}
+            onChange={props.onTextColorChange}
+          />
+
+          <Divider />
+
           {/* Font family */}
           <span className="text-[10px] text-french-gray">Font</span>
           <div className="flex items-center gap-0.5">
@@ -327,6 +397,20 @@ export function Toolbar(props: ToolbarProps) {
               </ToggleButton>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Frame label (shown when a frame is selected) */}
+      {props.selectedFrameLabel !== undefined && (
+        <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
+          <span className="text-[10px] text-french-gray">Label</span>
+          <input
+            type="text"
+            value={props.selectedFrameLabel}
+            onChange={(e) => props.onFrameLabelChange(e.target.value)}
+            className="text-xs border border-gray-200 rounded px-2 py-1 w-32"
+            placeholder="Frame name"
+          />
         </div>
       )}
 

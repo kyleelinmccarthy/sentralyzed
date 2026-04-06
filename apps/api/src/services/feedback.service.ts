@@ -3,9 +3,11 @@ import { db } from '../db/index.js'
 import { feedback, feedbackResponses } from '../db/schema/feedback.js'
 import type {
   CreateFeedbackInput,
+  UpdateFeedbackInput,
   UpdateFeedbackStatusInput,
   FeedbackQueryInput,
 } from '@sentralyzed/shared/validators/feedback'
+import { whereActiveById, softDelete, canAccessAsOwner } from './utils/db-helpers.js'
 
 type Role = 'admin' | 'manager' | 'member'
 
@@ -24,10 +26,10 @@ export class FeedbackService {
 
   async getById(id: string, userId: string, role: Role) {
     const item = await db.query.feedback.findFirst({
-      where: and(eq(feedback.id, id), isNull(feedback.deletedAt)),
+      where: whereActiveById(feedback.id, id, feedback.deletedAt),
     })
     if (!item) return null
-    if (role === 'member' && item.submittedBy !== userId) return null
+    if (!canAccessAsOwner(role, item.submittedBy, userId)) return null
     return item
   }
 
@@ -52,9 +54,20 @@ export class FeedbackService {
     })
   }
 
+  async update(id: string, input: UpdateFeedbackInput, userId: string) {
+    const item = await db.query.feedback.findFirst({
+      where: whereActiveById(feedback.id, id, feedback.deletedAt),
+    })
+    if (!item) return { error: 'Feedback not found' }
+    if (item.submittedBy !== userId) return { error: 'Unauthorized' }
+
+    const [updated] = await db.update(feedback).set(input).where(eq(feedback.id, id)).returning()
+    return updated!
+  }
+
   async updateStatus(id: string, input: UpdateFeedbackStatusInput, reviewerId: string) {
     const item = await db.query.feedback.findFirst({
-      where: and(eq(feedback.id, id), isNull(feedback.deletedAt)),
+      where: whereActiveById(feedback.id, id, feedback.deletedAt),
     })
     if (!item) return { error: 'Feedback not found' }
 
@@ -73,7 +86,7 @@ export class FeedbackService {
 
   async addResponse(feedbackId: string, message: string, userId: string) {
     const item = await db.query.feedback.findFirst({
-      where: and(eq(feedback.id, feedbackId), isNull(feedback.deletedAt)),
+      where: whereActiveById(feedback.id, feedbackId, feedback.deletedAt),
     })
     if (!item) return { error: 'Feedback not found' }
 
@@ -101,12 +114,12 @@ export class FeedbackService {
 
   async softDelete(id: string, userId: string, role: Role): Promise<boolean> {
     const item = await db.query.feedback.findFirst({
-      where: and(eq(feedback.id, id), isNull(feedback.deletedAt)),
+      where: whereActiveById(feedback.id, id, feedback.deletedAt),
     })
     if (!item) return false
-    if (role === 'member' && item.submittedBy !== userId) return false
+    if (!canAccessAsOwner(role, item.submittedBy, userId)) return false
 
-    await db.update(feedback).set({ deletedAt: new Date() }).where(eq(feedback.id, id)).returning()
+    await softDelete(feedback, feedback.id, id)
     return true
   }
 }

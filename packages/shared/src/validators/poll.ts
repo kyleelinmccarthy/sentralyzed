@@ -1,8 +1,11 @@
 import { z } from 'zod'
+import { POLL_CONTEXT_TYPES } from '../types/poll'
+
+export const pollContextTypeSchema = z.enum(POLL_CONTEXT_TYPES)
 
 export const createPollSchema = z.object({
   question: z.string().min(1, 'Question is required').max(500),
-  contextType: z.enum(['channel', 'forum', 'project', 'goal']),
+  contextType: pollContextTypeSchema,
   contextId: z.string().uuid(),
   options: z
     .array(z.string().min(1, 'Option text is required').max(200))

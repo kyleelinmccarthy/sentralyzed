@@ -9,6 +9,9 @@ export const createExpenseSchema = z.object({
   customLabel: z.string().max(100).optional(),
   receiptUrl: z.string().url().optional(),
   projectId: z.string().uuid().optional(),
+  clientId: z.string().uuid().optional(),
+  budgetId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
   taxDeductible: z.boolean().default(true),
   date: z.string().date(),
   vendor: z.string().max(255).optional(),
@@ -26,6 +29,9 @@ export const expenseQuerySchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected']).optional(),
   category: z.enum(EXPENSE_CATEGORIES).optional(),
   projectId: z.string().uuid().optional(),
+  clientId: z.string().uuid().optional(),
+  budgetId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
   startDate: z.string().date().optional(),
   endDate: z.string().date().optional(),
   submittedBy: z.string().uuid().optional(),
@@ -39,6 +45,7 @@ export const createBudgetSchema = z.object({
   periodType: z.enum(BUDGET_PERIODS),
   category: z.enum(EXPENSE_CATEGORIES).optional(),
   projectId: z.string().uuid().optional(),
+  clientId: z.string().uuid().optional(),
 })
 
 export const updateBudgetSchema = createBudgetSchema.partial()
@@ -47,6 +54,8 @@ export const reportQuerySchema = z.object({
   startDate: z.string().date(),
   endDate: z.string().date(),
   projectId: z.string().uuid().optional(),
+  clientId: z.string().uuid().optional(),
+  budgetId: z.string().uuid().optional(),
 })
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>

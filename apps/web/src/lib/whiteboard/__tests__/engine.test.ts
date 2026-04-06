@@ -15,6 +15,12 @@ import {
   createShape,
   FONT_SIZE_PX,
   FONT_FAMILY_CSS,
+  IMAGE_MAX_DIMENSION,
+  constrainImageDimensions,
+  pointInPolygon,
+  intersectsPolygon,
+  getFrameChildren,
+  moveFrameWithChildren,
 } from '../engine'
 
 // ─── Factory helper ───
@@ -406,5 +412,287 @@ describe('text shape properties', () => {
     expect(dupes[0]!.fontSize).toBe('L')
     expect(dupes[0]!.textAlign).toBe('right')
     expect(dupes[0]!.text).toBe('Hello')
+  })
+})
+
+// ─── Image shape ───
+function makeImage(overrides: Partial<Shape> = {}): Shape {
+  return createShape({
+    type: 'image',
+    x: 20,
+    y: 30,
+    width: 200,
+    height: 150,
+    imageUrl: 'data:image/png;base64,abc',
+    ...overrides,
+  })
+}
+
+describe('image shape', () => {
+  it('createShape accepts image type with imageUrl', () => {
+    const s = makeImage()
+    expect(s.type).toBe('image')
+    expect(s.imageUrl).toBe('data:image/png;base64,abc')
+    expect(s.width).toBe(200)
+    expect(s.height).toBe(150)
+  })
+
+  it('hitTest treats image like rectangle', () => {
+    const img = makeImage()
+    expect(hitTest(img, 100, 100)).toBe(true) // inside
+    expect(hitTest(img, 500, 500)).toBe(false) // outside
+  })
+
+  it('getBoundingBox returns image bounds', () => {
+    const img = makeImage()
+    const box = getBoundingBox(img)
+    expect(box).toEqual({ x: 20, y: 30, width: 200, height: 150 })
+  })
+
+  it('duplicateShapes preserves imageUrl', () => {
+    const dupes = duplicateShapes([makeImage()])
+    expect(dupes[0]!.imageUrl).toBe('data:image/png;base64,abc')
+    expect(dupes[0]!.type).toBe('image')
+  })
+
+  it('intersectsRect works for image shapes', () => {
+    const img = makeImage()
+    expect(intersectsRect(img, { x: 0, y: 0, width: 50, height: 50 })).toBe(true)
+    expect(intersectsRect(img, { x: 500, y: 500, width: 10, height: 10 })).toBe(false)
+  })
+
+  it('getResizeHandle works for image shapes', () => {
+    const img = makeImage({ x: 0, y: 0, width: 100, height: 100 })
+    expect(getResizeHandle(img, 0, 0)).toBe('nw')
+    expect(getResizeHandle(img, 100, 100)).toBe('se')
+  })
+})
+
+// ─── constrainImageDimensions ───
+describe('constrainImageDimensions', () => {
+  it('returns original dimensions when within limits', () => {
+    const result = constrainImageDimensions(200, 150)
+    expect(result).toEqual({ width: 200, height: 150 })
+  })
+
+  it('scales down when width exceeds max', () => {
+    const result = constrainImageDimensions(1600, 400)
+    expect(result.width).toBe(IMAGE_MAX_DIMENSION)
+    expect(result.height).toBe(200) // scaled proportionally
+  })
+
+  it('scales down when height exceeds max', () => {
+    const result = constrainImageDimensions(400, 1600)
+    expect(result.height).toBe(IMAGE_MAX_DIMENSION)
+    expect(result.width).toBe(200)
+  })
+
+  it('scales down based on the larger dimension', () => {
+    const result = constrainImageDimensions(2000, 1000)
+    expect(result.width).toBe(IMAGE_MAX_DIMENSION)
+    expect(result.height).toBe(400)
+  })
+})
+
+// ─── Handwritten font family ───
+describe('handwritten font family', () => {
+  it('maps hand to Caveat as primary font', () => {
+    expect(FONT_FAMILY_CSS.hand).toMatch(/^Caveat/)
+  })
+
+  it('includes cursive as generic fallback', () => {
+    expect(FONT_FAMILY_CSS.hand).toContain('cursive')
+  })
+})
+
+// ─── Lasso: pointInPolygon ───
+describe('pointInPolygon', () => {
+  const triangle: number[][] = [
+    [0, 0],
+    [100, 0],
+    [50, 100],
+  ]
+
+  it('returns true for point inside triangle', () => {
+    expect(pointInPolygon(50, 30, triangle)).toBe(true)
+  })
+
+  it('returns false for point outside triangle', () => {
+    expect(pointInPolygon(200, 200, triangle)).toBe(false)
+  })
+
+  it('returns true for point inside complex polygon', () => {
+    const square: number[][] = [
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [0, 100],
+    ]
+    expect(pointInPolygon(50, 50, square)).toBe(true)
+  })
+
+  it('returns false for degenerate polygon (< 3 points)', () => {
+    expect(
+      pointInPolygon(50, 50, [
+        [0, 0],
+        [100, 100],
+      ]),
+    ).toBe(false)
+  })
+})
+
+// ─── Lasso: intersectsPolygon ───
+describe('intersectsPolygon', () => {
+  const largeTriangle: number[][] = [
+    [0, 0],
+    [200, 0],
+    [100, 200],
+  ]
+
+  it('returns true when shape bbox corner is inside polygon', () => {
+    const rect = makeRect({ x: 20, y: 10, width: 30, height: 30 })
+    expect(intersectsPolygon(rect, largeTriangle)).toBe(true)
+  })
+
+  it('returns true when polygon vertex is inside shape bbox', () => {
+    // Shape is large enough to contain a polygon vertex
+    const rect = makeRect({ x: 90, y: 190, width: 30, height: 30 })
+    expect(intersectsPolygon(rect, largeTriangle)).toBe(true)
+  })
+
+  it('returns false when no overlap', () => {
+    const rect = makeRect({ x: 500, y: 500, width: 30, height: 30 })
+    expect(intersectsPolygon(rect, largeTriangle)).toBe(false)
+  })
+
+  it('works with freehand shapes', () => {
+    const fh = makeFreehand({ x: 50, y: 20 })
+    expect(intersectsPolygon(fh, largeTriangle)).toBe(true)
+  })
+})
+
+// ─── Frame shape ───
+function makeFrame(overrides: Partial<Shape> = {}): Shape {
+  return createShape({
+    type: 'frame',
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    label: 'Frame',
+    ...overrides,
+  })
+}
+
+describe('frame shape', () => {
+  it('hitTest returns true inside frame bounds', () => {
+    const frame = makeFrame()
+    expect(hitTest(frame, 100, 100)).toBe(true)
+  })
+
+  it('hitTest returns false outside frame bounds', () => {
+    const frame = makeFrame()
+    expect(hitTest(frame, 400, 400)).toBe(false)
+  })
+
+  it('getBoundingBox returns correct rect', () => {
+    const frame = makeFrame({ x: 10, y: 20, width: 300, height: 250 })
+    expect(getBoundingBox(frame)).toEqual({ x: 10, y: 20, width: 300, height: 250 })
+  })
+
+  it('duplicateShapes preserves label and childIds', () => {
+    const frame = makeFrame({ label: 'My Frame', childIds: ['a', 'b'] })
+    const dupes = duplicateShapes([frame])
+    expect(dupes[0]!.label).toBe('My Frame')
+    expect(dupes[0]!.childIds).toEqual(['a', 'b'])
+  })
+})
+
+// ─── getFrameChildren ───
+describe('getFrameChildren', () => {
+  it('returns shapes whose center is inside frame', () => {
+    const frame = makeFrame({ x: 0, y: 0, width: 200, height: 200 })
+    const inside = makeRect({ x: 50, y: 50, width: 40, height: 40 })
+    const outside = makeRect({ x: 300, y: 300, width: 40, height: 40 })
+    const children = getFrameChildren(frame, [frame, inside, outside])
+    expect(children).toEqual([inside.id])
+  })
+
+  it('returns empty when no shapes inside', () => {
+    const frame = makeFrame({ x: 0, y: 0, width: 100, height: 100 })
+    const outside = makeRect({ x: 500, y: 500, width: 40, height: 40 })
+    expect(getFrameChildren(frame, [frame, outside])).toEqual([])
+  })
+
+  it('ignores other frames', () => {
+    const frame1 = makeFrame({ x: 0, y: 0, width: 400, height: 400 })
+    const frame2 = makeFrame({ x: 50, y: 50, width: 100, height: 100 })
+    expect(getFrameChildren(frame1, [frame1, frame2])).toEqual([])
+  })
+})
+
+// ─── moveFrameWithChildren ───
+describe('moveFrameWithChildren', () => {
+  it('moves frame and its children by dx/dy', () => {
+    const frame = makeFrame({ x: 0, y: 0, width: 200, height: 200, childIds: ['child1'] })
+    const child = makeRect({ x: 50, y: 50, width: 40, height: 40 })
+    // Override child ID to match
+    const childWithId = { ...child, id: 'child1' }
+    const other = makeRect({ x: 300, y: 300, width: 40, height: 40 })
+
+    const result = moveFrameWithChildren(frame, [frame, childWithId, other], 10, 20)
+
+    const movedFrame = result.find((s) => s.id === frame.id)!
+    const movedChild = result.find((s) => s.id === 'child1')!
+    const unmoved = result.find((s) => s.id === other.id)!
+
+    expect(movedFrame.x).toBe(10)
+    expect(movedFrame.y).toBe(20)
+    expect(movedChild.x).toBe(60)
+    expect(movedChild.y).toBe(70)
+    expect(unmoved.x).toBe(300)
+    expect(unmoved.y).toBe(300)
+  })
+})
+
+// ─── Embed shape ───
+function makeEmbed(overrides: Partial<Shape> = {}): Shape {
+  return createShape({
+    type: 'embed',
+    x: 10,
+    y: 10,
+    width: 400,
+    height: 300,
+    url: 'https://example.com',
+    ...overrides,
+  })
+}
+
+describe('embed shape', () => {
+  it('createShape preserves url', () => {
+    const s = makeEmbed()
+    expect(s.type).toBe('embed')
+    expect(s.url).toBe('https://example.com')
+  })
+
+  it('hitTest returns true inside', () => {
+    const s = makeEmbed()
+    expect(hitTest(s, 100, 100)).toBe(true)
+  })
+
+  it('hitTest returns false outside', () => {
+    const s = makeEmbed()
+    expect(hitTest(s, 600, 600)).toBe(false)
+  })
+
+  it('duplicateShapes preserves url', () => {
+    const dupes = duplicateShapes([makeEmbed()])
+    expect(dupes[0]!.url).toBe('https://example.com')
+    expect(dupes[0]!.type).toBe('embed')
+  })
+
+  it('getBoundingBox returns correct rect', () => {
+    const box = getBoundingBox(makeEmbed())
+    expect(box).toEqual({ x: 10, y: 10, width: 400, height: 300 })
   })
 })

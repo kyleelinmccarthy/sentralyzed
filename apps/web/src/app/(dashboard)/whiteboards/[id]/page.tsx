@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, use } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { WhiteboardCanvas } from '@/components/whiteboard/Canvas'
 import type { Shape } from '@/lib/whiteboard/engine'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
+import { FileAttachments } from '@/components/files/FileAttachments'
 import { api } from '@/lib/api'
 
 const SAVE_DEBOUNCE_MS = 1500
@@ -17,17 +19,28 @@ interface WhiteboardData {
 
 export default function WhiteboardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [shapes, setShapes] = useState<Shape[]>([])
   const [showAssignments, setShowAssignments] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved')
   const [loaded, setLoaded] = useState(false)
   const [name, setName] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingShapes = useRef<Shape[] | null>(null)
   const isInitialLoad = useRef(true)
+  const realIdRef = useRef<string>(id)
+
+  const isLocalId = id.startsWith('local-')
 
   // Load whiteboard data on mount
   useEffect(() => {
     const load = async () => {
+      if (isLocalId) {
+        // Local whiteboard — nothing to load from DB yet
+        setLoaded(true)
+        isInitialLoad.current = false
+        return
+      }
       try {
         const data = await api.get<{ whiteboard: WhiteboardData }>(`/whiteboards/${id}`)
         setName(data.whiteboard.name)
@@ -35,27 +48,41 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
           setShapes(data.whiteboard.shapesData)
         }
       } catch {
-        // Whiteboard may not exist in DB yet (local-created)
+        // Whiteboard may not exist in DB yet
       } finally {
         setLoaded(true)
         isInitialLoad.current = false
       }
     }
     void load()
-  }, [id])
+  }, [id, isLocalId])
 
   // Auto-save shapes with debounce
   const saveShapes = useCallback(
     async (shapesToSave: Shape[]) => {
       setSaveStatus('saving')
       try {
-        await api.patch(`/whiteboards/${id}`, { shapesData: shapesToSave })
+        // If this is a local whiteboard, create it in the DB first
+        if (realIdRef.current.startsWith('local-')) {
+          const boardName = name || `Whiteboard ${id.substring(6)}`
+          const data = await api.post<{ whiteboard: WhiteboardData }>('/whiteboards', {
+            name: boardName,
+          })
+          realIdRef.current = data.whiteboard.id
+          setName(data.whiteboard.name)
+        }
+        await api.patch(`/whiteboards/${realIdRef.current}`, { shapesData: shapesToSave })
+        pendingShapes.current = null
         setSaveStatus('saved')
+        // Redirect to the real URL so refreshes and future saves work
+        if (realIdRef.current !== id) {
+          router.replace(`/whiteboards/${realIdRef.current}`)
+        }
       } catch {
         setSaveStatus('error')
       }
     },
-    [id],
+    [id, name, router],
   )
 
   const handleShapesChange = useCallback(
@@ -65,6 +92,7 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
       if (isInitialLoad.current) return
 
       setSaveStatus('unsaved')
+      pendingShapes.current = newShapes
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
         void saveShapes(newShapes)
@@ -73,12 +101,22 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
     [saveShapes],
   )
 
-  // Save on unmount if pending
+  // Flush pending save on unmount
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
+      if (pendingShapes.current && !realIdRef.current.startsWith('local-')) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        fetch(`${apiUrl}/whiteboards/${realIdRef.current}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          keepalive: true,
+          body: JSON.stringify({ shapesData: pendingShapes.current }),
+        })
+      }
     }
-  }, [])
+  }, [id])
 
   const statusLabel = {
     saved: 'Saved',
@@ -127,10 +165,11 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {/* Assignments panel */}
+      {/* Assignments & Files panel */}
       {showAssignments && (
-        <div className="border-b border-gray-200 p-4 bg-white">
+        <div className="border-b border-gray-200 p-4 bg-white space-y-4">
           <UserAssignmentPicker entityType="whiteboard" entityId={id} />
+          <FileAttachments entityType="whiteboard" entityId={id} />
         </div>
       )}
 

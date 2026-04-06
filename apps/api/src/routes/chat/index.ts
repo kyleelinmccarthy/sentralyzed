@@ -55,6 +55,22 @@ chatRouter.post(
   },
 )
 
+chatRouter.patch(
+  '/channels/:id',
+  zValidator(
+    'json',
+    z.object({
+      name: z.string().min(1).max(255).optional(),
+      description: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const channel = await chatService.updateChannel(c.req.param('id'), c.req.valid('json'))
+    if (!channel) return c.json({ error: 'Not found or not editable' }, 404)
+    return c.json({ channel })
+  },
+)
+
 chatRouter.get('/channels/:id/messages', async (c) => {
   const cursor = c.req.query('cursor')
   const limit = c.req.query('limit')

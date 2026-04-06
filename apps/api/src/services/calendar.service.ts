@@ -1,6 +1,7 @@
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { events, eventAttendees, availability } from '../db/schema/calendar.js'
+import { users } from '../db/schema/users.js'
 
 export class CalendarService {
   async listEvents(start: string, end: string) {
@@ -24,9 +25,9 @@ export class CalendarService {
     location?: string
     createdBy: string
     color?: string
-    attendeeIds?: string[]
+    attendees?: Array<{ userId: string; requirement: 'required' | 'optional' }>
   }) {
-    const { attendeeIds, ...eventData } = data
+    const { attendees, ...eventData } = data
     const [event] = await db
       .insert(events)
       .values({
@@ -36,11 +37,29 @@ export class CalendarService {
       })
       .returning()
 
-    if (attendeeIds?.length) {
-      await db
-        .insert(eventAttendees)
-        .values(attendeeIds.map((userId) => ({ eventId: event!.id, userId })))
+    const attendeeValues = (attendees ?? []).map((a) => ({
+      eventId: event!.id,
+      userId: a.userId,
+      requirement: a.requirement,
+    }))
+
+    // Always add the creator as a required attendee (auto-accepted)
+    const creatorAlreadyIncluded = attendeeValues.some((a) => a.userId === data.createdBy)
+    if (!creatorAlreadyIncluded) {
+      attendeeValues.push({
+        eventId: event!.id,
+        userId: data.createdBy,
+        requirement: 'required' as const,
+      })
     }
+
+    await db.insert(eventAttendees).values(attendeeValues)
+
+    // Auto-accept the creator's RSVP
+    await db
+      .update(eventAttendees)
+      .set({ status: 'accepted', respondedAt: new Date() })
+      .where(and(eq(eventAttendees.eventId, event!.id), eq(eventAttendees.userId, data.createdBy)))
 
     return event!
   }
@@ -54,12 +73,26 @@ export class CalendarService {
       endTime: string
       color: string
       location: string
+      attendees: Array<{ userId: string; requirement: 'required' | 'optional' }>
     }>,
   ) {
-    const updateData: Record<string, unknown> = { ...data }
-    if (data.startTime) updateData.startTime = new Date(data.startTime)
-    if (data.endTime) updateData.endTime = new Date(data.endTime)
+    const { attendees, ...rest } = data
+    const updateData: Record<string, unknown> = { ...rest }
+    if (rest.startTime) updateData.startTime = new Date(rest.startTime)
+    if (rest.endTime) updateData.endTime = new Date(rest.endTime)
     const [event] = await db.update(events).set(updateData).where(eq(events.id, id)).returning()
+
+    if (attendees !== undefined) {
+      await db.delete(eventAttendees).where(eq(eventAttendees.eventId, id))
+      if (attendees.length) {
+        await db
+          .insert(eventAttendees)
+          .values(
+            attendees.map((a) => ({ eventId: id, userId: a.userId, requirement: a.requirement })),
+          )
+      }
+    }
+
     return event
   }
 
@@ -76,7 +109,19 @@ export class CalendarService {
   }
 
   async getAttendees(eventId: string) {
-    return db.query.eventAttendees.findMany({ where: eq(eventAttendees.eventId, eventId) })
+    return db
+      .select({
+        userId: eventAttendees.userId,
+        status: eventAttendees.status,
+        requirement: eventAttendees.requirement,
+        respondedAt: eventAttendees.respondedAt,
+        name: users.name,
+        email: users.email,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(eventAttendees)
+      .innerJoin(users, eq(eventAttendees.userId, users.id))
+      .where(eq(eventAttendees.eventId, eventId))
   }
 
   async setAvailability(

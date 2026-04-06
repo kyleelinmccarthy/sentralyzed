@@ -22,6 +22,7 @@ vi.mock('../middleware/auth.js', () => ({
 const mockCreate = vi.fn()
 const mockGetById = vi.fn()
 const mockList = vi.fn()
+const mockUpdate = vi.fn()
 const mockUpdateStatus = vi.fn()
 const mockAddResponse = vi.fn()
 const mockGetWithResponses = vi.fn()
@@ -32,6 +33,7 @@ vi.mock('../services/feedback.service.js', () => ({
     create: mockCreate,
     getById: mockGetById,
     list: mockList,
+    update: mockUpdate,
     updateStatus: mockUpdateStatus,
     addResponse: mockAddResponse,
     getWithResponses: mockGetWithResponses,
@@ -129,6 +131,63 @@ describe('Feedback Routes', () => {
       const res = await app.request('/feedback/nonexistent')
 
       expect(res.status).toBe(404)
+    })
+  })
+
+  // --- Edit (submitter only) ---
+
+  describe('PATCH /feedback/:id', () => {
+    it('updates feedback fields', async () => {
+      const updated = {
+        id: 'fb-1',
+        title: 'Updated title',
+        description: 'New desc',
+        category: 'feature_request',
+        priority: 'low',
+      }
+      mockUpdate.mockResolvedValue(updated)
+
+      const res = await app.request('/feedback/fb-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Updated title',
+          description: 'New desc',
+          category: 'feature_request',
+          priority: 'low',
+        }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.feedback).toEqual(updated)
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'fb-1',
+        expect.objectContaining({ title: 'Updated title' }),
+        'user-1',
+      )
+    })
+
+    it('returns 400 when service returns error', async () => {
+      mockUpdate.mockResolvedValue({ error: 'Unauthorized' })
+
+      const res = await app.request('/feedback/fb-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New title' }),
+      })
+
+      expect(res.status).toBe(400)
+    })
+
+    it('rejects invalid category', async () => {
+      const res = await app.request('/feedback/fb-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'not_a_category' }),
+      })
+
+      expect(res.status).toBe(400)
     })
   })
 

@@ -5,6 +5,7 @@ export const ASSIGNABLE_ENTITY_TYPES = [
   'whiteboard',
   'expense',
   'client',
+  'asset',
 ] as const
 export type AssignableEntityType = (typeof ASSIGNABLE_ENTITY_TYPES)[number]
 

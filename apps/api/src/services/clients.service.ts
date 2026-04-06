@@ -2,6 +2,7 @@ import { eq, and, isNull, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { clients, clientProjects } from '../db/schema/clients.js'
 import type { ClientStatus, ClientProjectRole } from '@sentralyzed/shared/types/client'
+import { whereActiveById, softDelete } from './utils/db-helpers.js'
 
 export class ClientsService {
   async list(filters?: { status?: string; search?: string }) {
@@ -19,7 +20,7 @@ export class ClientsService {
 
   async getById(id: string) {
     return db.query.clients.findFirst({
-      where: and(eq(clients.id, id), isNull(clients.deletedAt)),
+      where: whereActiveById(clients.id, id, clients.deletedAt),
     })
   }
 
@@ -52,12 +53,7 @@ export class ClientsService {
   }
 
   async softDelete(id: string) {
-    const [client] = await db
-      .update(clients)
-      .set({ deletedAt: new Date() })
-      .where(eq(clients.id, id))
-      .returning()
-    return client
+    return softDelete(clients, clients.id, id)
   }
 
   async addProject(

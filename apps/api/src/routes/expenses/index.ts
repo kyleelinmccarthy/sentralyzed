@@ -58,6 +58,12 @@ expensesRouter.patch(
   },
 )
 
+expensesRouter.get('/budgets/:id/spending', async (c) => {
+  const budget = await expensesService.getBudgetWithSpent(c.req.param('id'))
+  if (!budget) return c.json({ error: 'Budget not found' }, 404)
+  return c.json({ budget })
+})
+
 expensesRouter.delete('/budgets/:id', requireRole('admin', 'manager'), async (c) => {
   const ok = await expensesService.deleteBudget(c.req.param('id') as string)
   if (!ok) return c.json({ error: 'Budget not found' }, 404)

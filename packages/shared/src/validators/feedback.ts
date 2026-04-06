@@ -8,6 +8,15 @@ export const createFeedbackSchema = z.object({
   priority: z.enum(FEEDBACK_PRIORITIES).default('medium'),
 })
 
+export const updateFeedbackSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(5000).optional(),
+  category: z.enum(FEEDBACK_CATEGORIES).optional(),
+  priority: z.enum(FEEDBACK_PRIORITIES).optional(),
+})
+
+export type UpdateFeedbackInput = z.infer<typeof updateFeedbackSchema>
+
 export const updateFeedbackStatusSchema = z.object({
   status: z.enum(FEEDBACK_STATUSES),
   adminNotes: z.string().max(2000).optional(),

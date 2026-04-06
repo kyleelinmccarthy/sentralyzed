@@ -84,6 +84,82 @@ describe('ExpensesService', () => {
         }),
       )
     })
+
+    it('inserts an expense with budgetId', async () => {
+      const expense = {
+        id: 'exp-2',
+        description: 'Software license',
+        amountCents: 12000,
+        category: 'software_subscriptions',
+        budgetId: 'budget-1',
+        status: 'pending',
+        submittedBy: 'user-1',
+        date: '2026-03-20',
+      }
+      const returning = vi.fn().mockResolvedValue([expense])
+      const values = vi.fn().mockReturnValue({ returning })
+      mockInsert.mockReturnValue({ values })
+
+      const result = await service.create(
+        {
+          description: 'Software license',
+          amountCents: 12000,
+          category: 'software_subscriptions',
+          date: '2026-03-20',
+          budgetId: 'budget-1',
+        },
+        'user-1',
+      )
+
+      expect(result).toEqual(expense)
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ budgetId: 'budget-1' }))
+    })
+
+    it('inserts an expense with assetId', async () => {
+      const expense = {
+        id: 'exp-3',
+        description: 'MacBook Pro purchase',
+        amountCents: 250000,
+        category: 'equipment',
+        assetId: 'asset-1',
+        status: 'pending',
+        submittedBy: 'user-1',
+        date: '2026-03-25',
+      }
+      const returning = vi.fn().mockResolvedValue([expense])
+      const values = vi.fn().mockReturnValue({ returning })
+      mockInsert.mockReturnValue({ values })
+
+      const result = await service.create(
+        {
+          description: 'MacBook Pro purchase',
+          amountCents: 250000,
+          category: 'equipment',
+          date: '2026-03-25',
+          assetId: 'asset-1',
+        },
+        'user-1',
+      )
+
+      expect(result).toEqual(expense)
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'asset-1' }))
+    })
+  })
+
+  describe('list with assetId filter', () => {
+    it('filters expenses by assetId', async () => {
+      const expenses = [{ id: 'exp-1', assetId: 'asset-1' }]
+      mockExpensesFindMany.mockResolvedValue(expenses)
+
+      const result = await service.list(
+        { page: 1, limit: 25, assetId: 'asset-1' },
+        'user-1',
+        'admin',
+      )
+
+      expect(result).toEqual(expenses)
+      expect(mockExpensesFindMany).toHaveBeenCalled()
+    })
   })
 
   describe('getById', () => {
@@ -297,6 +373,7 @@ describe('ExpensesService', () => {
         periodType: 'monthly',
         category: 'software_subscriptions',
         projectId: null,
+        clientId: null,
         createdBy: 'admin-1',
       }
       const returning = vi.fn().mockResolvedValue([budget])
@@ -315,6 +392,33 @@ describe('ExpensesService', () => {
 
       expect(result).toEqual(budget)
       expect(mockInsert).toHaveBeenCalled()
+    })
+
+    it('inserts a budget with clientId', async () => {
+      const budget = {
+        id: 'budget-2',
+        name: 'Client A Budget',
+        amountCents: 200000,
+        periodType: 'quarterly',
+        clientId: 'client-1',
+        createdBy: 'admin-1',
+      }
+      const returning = vi.fn().mockResolvedValue([budget])
+      const values = vi.fn().mockReturnValue({ returning })
+      mockInsert.mockReturnValue({ values })
+
+      const result = await service.createBudget(
+        {
+          name: 'Client A Budget',
+          amountCents: 200000,
+          periodType: 'quarterly',
+          clientId: 'client-1',
+        },
+        'admin-1',
+      )
+
+      expect(result).toEqual(budget)
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'client-1' }))
     })
   })
 
@@ -416,6 +520,40 @@ describe('ExpensesService', () => {
       expect(result.taxDeductibleCents).toBe(0)
       expect(result.nonDeductibleCents).toBe(0)
       expect(result.count).toBe(0)
+    })
+  })
+
+  describe('getBudgetWithSpent', () => {
+    it('returns budget with spent and remaining amounts', async () => {
+      const budget = {
+        id: 'budget-1',
+        name: 'Software',
+        amountCents: 50000,
+        periodType: 'monthly',
+        category: 'software_subscriptions',
+        deletedAt: null,
+      }
+      mockBudgetsFindFirst.mockResolvedValue(budget)
+
+      const linkedExpenses = [
+        { amountCents: 12000, status: 'approved' },
+        { amountCents: 8000, status: 'approved' },
+      ]
+      mockExpensesFindMany.mockResolvedValue(linkedExpenses)
+
+      const result = await service.getBudgetWithSpent('budget-1')
+
+      expect(result).not.toBeNull()
+      expect(result!.spentCents).toBe(20000)
+      expect(result!.remainingCents).toBe(30000)
+    })
+
+    it('returns null when budget not found', async () => {
+      mockBudgetsFindFirst.mockResolvedValue(undefined)
+
+      const result = await service.getBudgetWithSpent('nonexistent')
+
+      expect(result).toBeNull()
     })
   })
 })

@@ -139,6 +139,17 @@ forumsRouter.post(
   },
 )
 
+forumsRouter.patch(
+  '/replies/:id',
+  zValidator('json', z.object({ content: z.any() })),
+  async (c) => {
+    const user = c.get('user')
+    const reply = await forumsService.updateReply(c.req.param('id'), user.id, c.req.valid('json'))
+    if (!reply) return c.json({ error: 'Not found or unauthorized' }, 404)
+    return c.json({ reply })
+  },
+)
+
 forumsRouter.delete('/replies/:id', async (c) => {
   await forumsService.deleteReply(c.req.param('id'))
   return c.json({ ok: true })

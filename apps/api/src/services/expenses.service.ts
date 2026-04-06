@@ -10,13 +10,16 @@ import type {
   UpdateBudgetInput,
   ReportQueryInput,
 } from '@sentralyzed/shared/validators/expense'
-import type { ExpenseSummary, ExpenseCategory } from '@sentralyzed/shared/types/expense'
+import type {
+  ExpenseSummary,
+  ExpenseCategory,
+  BudgetWithSpent,
+} from '@sentralyzed/shared/types/expense'
+import { whereActiveById, softDelete, canAccessAsOwner } from './utils/db-helpers.js'
 
 type Role = 'admin' | 'manager' | 'member'
 
 export class ExpensesService {
-  // --- Expense CRUD ---
-
   async create(input: CreateExpenseInput, userId: string) {
     const [expense] = await db
       .insert(expenses)
@@ -31,10 +34,10 @@ export class ExpensesService {
 
   async getById(id: string, userId: string, role: Role) {
     const expense = await db.query.expenses.findFirst({
-      where: and(eq(expenses.id, id), isNull(expenses.deletedAt)),
+      where: whereActiveById(expenses.id, id, expenses.deletedAt),
     })
     if (!expense) return null
-    if (role === 'member' && expense.submittedBy !== userId) return null
+    if (!canAccessAsOwner(role, expense.submittedBy, userId)) return null
     return expense
   }
 
@@ -50,6 +53,9 @@ export class ExpensesService {
     if (query.status) conditions.push(eq(expenses.status, query.status))
     if (query.category) conditions.push(eq(expenses.category, query.category))
     if (query.projectId) conditions.push(eq(expenses.projectId, query.projectId))
+    if (query.clientId) conditions.push(eq(expenses.clientId, query.clientId))
+    if (query.budgetId) conditions.push(eq(expenses.budgetId, query.budgetId))
+    if (query.assetId) conditions.push(eq(expenses.assetId, query.assetId))
     if (query.startDate) conditions.push(gte(expenses.date, query.startDate))
     if (query.endDate) conditions.push(lte(expenses.date, query.endDate))
 
@@ -63,7 +69,7 @@ export class ExpensesService {
 
   async update(id: string, input: UpdateExpenseInput, userId: string) {
     const expense = await db.query.expenses.findFirst({
-      where: and(eq(expenses.id, id), isNull(expenses.deletedAt)),
+      where: whereActiveById(expenses.id, id, expenses.deletedAt),
     })
     if (!expense || expense.submittedBy !== userId) return { error: 'Expense not found' }
     if (expense.status !== 'pending') return { error: 'Can only update pending expenses' }
@@ -74,17 +80,17 @@ export class ExpensesService {
 
   async delete(id: string, userId: string): Promise<boolean> {
     const expense = await db.query.expenses.findFirst({
-      where: and(eq(expenses.id, id), isNull(expenses.deletedAt)),
+      where: whereActiveById(expenses.id, id, expenses.deletedAt),
     })
     if (!expense || expense.submittedBy !== userId || expense.status !== 'pending') return false
 
-    await db.update(expenses).set({ deletedAt: new Date() }).where(eq(expenses.id, id)).returning()
+    await softDelete(expenses, expenses.id, id)
     return true
   }
 
   async review(id: string, input: ReviewExpenseInput, reviewerId: string) {
     const expense = await db.query.expenses.findFirst({
-      where: and(eq(expenses.id, id), isNull(expenses.deletedAt)),
+      where: whereActiveById(expenses.id, id, expenses.deletedAt),
     })
     if (!expense) return { error: 'Expense not found' }
     if (expense.status !== 'pending') return { error: 'Expense has already been reviewed' }
@@ -102,8 +108,6 @@ export class ExpensesService {
     return updated!
   }
 
-  // --- Reports ---
-
   async getSummary(query: ReportQueryInput): Promise<ExpenseSummary> {
     const conditions = [
       eq(expenses.status, 'approved'),
@@ -112,6 +116,8 @@ export class ExpensesService {
       lte(expenses.date, query.endDate),
     ]
     if (query.projectId) conditions.push(eq(expenses.projectId, query.projectId))
+    if (query.clientId) conditions.push(eq(expenses.clientId, query.clientId))
+    if (query.budgetId) conditions.push(eq(expenses.budgetId, query.budgetId))
 
     const rows = await db.query.expenses.findMany({
       where: and(...conditions),
@@ -140,8 +146,6 @@ export class ExpensesService {
     }
   }
 
-  // --- Budget CRUD ---
-
   async createBudget(input: CreateBudgetInput, userId: string) {
     const [budget] = await db
       .insert(budgets)
@@ -161,7 +165,7 @@ export class ExpensesService {
 
   async updateBudget(id: string, input: UpdateBudgetInput) {
     const budget = await db.query.budgets.findFirst({
-      where: and(eq(budgets.id, id), isNull(budgets.deletedAt)),
+      where: whereActiveById(budgets.id, id, budgets.deletedAt),
     })
     if (!budget) return null
 
@@ -171,12 +175,35 @@ export class ExpensesService {
 
   async deleteBudget(id: string): Promise<boolean> {
     const budget = await db.query.budgets.findFirst({
-      where: and(eq(budgets.id, id), isNull(budgets.deletedAt)),
+      where: whereActiveById(budgets.id, id, budgets.deletedAt),
     })
     if (!budget) return false
 
-    await db.update(budgets).set({ deletedAt: new Date() }).where(eq(budgets.id, id)).returning()
+    await softDelete(budgets, budgets.id, id)
     return true
+  }
+
+  async getBudgetWithSpent(id: string): Promise<BudgetWithSpent | null> {
+    const budget = await db.query.budgets.findFirst({
+      where: whereActiveById(budgets.id, id, budgets.deletedAt),
+    })
+    if (!budget) return null
+
+    const linkedExpenses = await db.query.expenses.findMany({
+      where: and(
+        eq(expenses.budgetId, id),
+        eq(expenses.status, 'approved'),
+        isNull(expenses.deletedAt),
+      ),
+    })
+
+    const spentCents = linkedExpenses.reduce((sum, e) => sum + e.amountCents, 0)
+
+    return {
+      ...budget,
+      spentCents,
+      remainingCents: budget.amountCents - spentCents,
+    } as BudgetWithSpent
   }
 }
 

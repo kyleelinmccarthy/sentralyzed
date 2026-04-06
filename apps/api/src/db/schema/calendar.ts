@@ -13,6 +13,7 @@ import { timestamps } from './_helpers'
 import { users } from './users'
 
 export const rsvpStatusEnum = pgEnum('rsvp_status', ['pending', 'accepted', 'declined'])
+export const attendeeRequirementEnum = pgEnum('attendee_requirement', ['required', 'optional'])
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -38,6 +39,7 @@ export const eventAttendees = pgTable('event_attendees', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   status: rsvpStatusEnum('status').notNull().default('pending'),
+  requirement: attendeeRequirementEnum('requirement').notNull().default('required'),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
 })
 

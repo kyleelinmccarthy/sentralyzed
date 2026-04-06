@@ -12,6 +12,8 @@ import {
 import { timestamps, softDelete } from './_helpers'
 import { users } from './users'
 import { projects } from './projects'
+import { clients } from './clients'
+import { assets } from './assets'
 
 export const expenseCategoryEnum = pgEnum('expense_category', [
   'advertising',
@@ -36,6 +38,21 @@ export const expenseStatusEnum = pgEnum('expense_status', ['pending', 'approved'
 
 export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly', 'yearly'])
 
+export const budgets = pgTable('budgets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  periodType: budgetPeriodEnum('period_type').notNull(),
+  category: expenseCategoryEnum('category'),
+  projectId: uuid('project_id').references(() => projects.id),
+  clientId: uuid('client_id').references(() => clients.id),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  ...timestamps(),
+  ...softDelete(),
+})
+
 export const expenses = pgTable('expenses', {
   id: uuid('id').primaryKey().defaultRandom(),
   description: varchar('description', { length: 500 }).notNull(),
@@ -45,6 +62,9 @@ export const expenses = pgTable('expenses', {
   customLabel: varchar('custom_label', { length: 100 }),
   receiptUrl: text('receipt_url'),
   projectId: uuid('project_id').references(() => projects.id),
+  clientId: uuid('client_id').references(() => clients.id),
+  budgetId: uuid('budget_id').references(() => budgets.id),
+  assetId: uuid('asset_id').references(() => assets.id),
   taxDeductible: boolean('tax_deductible').notNull().default(true),
   date: date('date').notNull(),
   vendor: varchar('vendor', { length: 255 }),
@@ -56,20 +76,6 @@ export const expenses = pgTable('expenses', {
   reviewedBy: uuid('reviewed_by').references(() => users.id),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   rejectionReason: text('rejection_reason'),
-  ...timestamps(),
-  ...softDelete(),
-})
-
-export const budgets = pgTable('budgets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: varchar('name', { length: 255 }).notNull(),
-  amountCents: integer('amount_cents').notNull(),
-  periodType: budgetPeriodEnum('period_type').notNull(),
-  category: expenseCategoryEnum('category'),
-  projectId: uuid('project_id').references(() => projects.id),
-  createdBy: uuid('created_by')
-    .notNull()
-    .references(() => users.id),
   ...timestamps(),
   ...softDelete(),
 })

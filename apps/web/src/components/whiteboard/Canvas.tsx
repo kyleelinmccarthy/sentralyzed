@@ -23,6 +23,13 @@ import {
   duplicateShapes,
   reorderShapes,
   measureText,
+  loadCachedImage,
+  constrainImageDimensions,
+  intersectsPolygon,
+  renderLassoPath,
+  getFrameChildren,
+  renderLaserTrail,
+  type LaserPoint,
   FONT_SIZE_PX,
   FONT_FAMILY_CSS,
   type ReorderDirection,
@@ -45,7 +52,7 @@ const TOOL_SHORTCUTS: Record<string, ToolType> = {
   '7': 'arrow',
   '8': 'freehand',
   '9': 'text',
-  '0': 'eraser',
+  '0': 'image',
   v: 'select',
   h: 'hand',
   r: 'rectangle',
@@ -55,7 +62,11 @@ const TOOL_SHORTCUTS: Record<string, ToolType> = {
   a: 'arrow',
   p: 'freehand',
   t: 'text',
+  i: 'image',
   e: 'eraser',
+  f: 'frame',
+  k: 'laser',
+  w: 'embed',
 }
 
 export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
@@ -66,6 +77,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   const [fill, setFill] = useState('transparent')
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>('solid')
   const [opacity, setOpacity] = useState(100)
+  const [textColor, setTextColor] = useState('#333333')
   const [fontFamily, setFontFamily] = useState<FontFamily>('sans')
   const [fontSize, setFontSize] = useState<FontSize>('M')
   const [textAlign, setTextAlign] = useState<TextAlign>('left')
@@ -95,6 +107,25 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   const clipboard = useRef<Shape[]>([])
   const lastClickTime = useRef(0)
   const lastClickId = useRef<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingImagePos = useRef<{ x: number; y: number } | null>(null)
+  // Lasso selection
+  const lassoPoints = useRef<number[][]>([])
+  const isLassoing = useRef(false)
+  // Laser pointer
+  const laserPoints = useRef<LaserPoint[]>([])
+  const laserAnimFrame = useRef(0)
+  const isLasering = useRef(false)
+  // Embed
+  const [embedInput, setEmbedInput] = useState<{
+    x: number
+    y: number
+    screenX: number
+    screenY: number
+    url: string
+  } | null>(null)
+  const embedInputRef = useRef<HTMLInputElement>(null)
+  const [activeEmbedId, setActiveEmbedId] = useState<string | null>(null)
 
   // ─── Rendering ───
   const render = useCallback(() => {
@@ -129,10 +160,30 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
       ctx.stroke()
     }
 
-    // Shapes
+    // Shapes — frames first (background), then non-text, then text on top
+    // Pre-cache images so they trigger re-render when loaded
     for (const shape of shapes) {
-      renderShape(ctx, shape)
-      if (selectedIds.has(shape.id)) renderSelection(ctx, shape)
+      if (shape.type === 'image' && shape.imageUrl) {
+        loadCachedImage(shape.imageUrl, () => render())
+      }
+    }
+    for (const shape of shapes) {
+      if (shape.type === 'frame') {
+        renderShape(ctx, shape)
+        if (selectedIds.has(shape.id)) renderSelection(ctx, shape)
+      }
+    }
+    for (const shape of shapes) {
+      if (shape.type !== 'text' && shape.type !== 'frame') {
+        renderShape(ctx, shape)
+        if (selectedIds.has(shape.id)) renderSelection(ctx, shape)
+      }
+    }
+    for (const shape of shapes) {
+      if (shape.type === 'text') {
+        renderShape(ctx, shape)
+        if (selectedIds.has(shape.id)) renderSelection(ctx, shape)
+      }
     }
 
     // Multi-selection bounds
@@ -150,6 +201,20 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
     // Selection box
     if (selectionBox) {
       renderSelectionBox(ctx, selectionBox)
+    }
+
+    // Lasso path
+    if (isLassoing.current && lassoPoints.current.length > 1) {
+      renderLassoPath(ctx, lassoPoints.current)
+    }
+
+    // Laser trail
+    if (laserPoints.current.length > 0) {
+      laserPoints.current = renderLaserTrail(ctx, laserPoints.current)
+      if (laserPoints.current.length > 0) {
+        cancelAnimationFrame(laserAnimFrame.current)
+        laserAnimFrame.current = requestAnimationFrame(render)
+      }
     }
 
     ctx.restore()
@@ -171,6 +236,11 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
 
   useEffect(() => {
     render()
+  }, [render])
+
+  // ─── Font loading: re-render once web fonts are ready ───
+  useEffect(() => {
+    document.fonts.ready.then(() => render())
   }, [render])
 
   // ─── Undo / Redo ───
@@ -196,6 +266,44 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
     onShapesChange(next)
     setSelectedIds(new Set())
   }, [redoStack, shapes, onShapesChange])
+
+  // ─── Image insertion ───
+  const handleImageFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        const img = new Image()
+        img.onload = () => {
+          const { width, height } = constrainImageDimensions(img.naturalWidth, img.naturalHeight)
+          const pos = pendingImagePos.current ?? { x: 100, y: 100 }
+          pushUndo()
+          onShapesChange([
+            ...shapes,
+            createShape({
+              type: 'image',
+              x: pos.x,
+              y: pos.y,
+              width,
+              height,
+              imageUrl: dataUrl,
+              color,
+              strokeWidth,
+              fill: 'transparent',
+              opacity,
+              strokeStyle,
+            }),
+          ])
+          loadCachedImage(dataUrl, () => render())
+          pendingImagePos.current = null
+          setTool('select')
+        }
+        img.src = dataUrl
+      }
+      reader.readAsDataURL(file)
+    },
+    [shapes, color, strokeWidth, opacity, strokeStyle, onShapesChange, pushUndo, render],
+  )
 
   // ─── Text input commit ───
   const commitTextInput = useCallback(() => {
@@ -258,7 +366,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         y: textInput.y,
         width: measured.width,
         height: measured.height,
-        color,
+        color: textColor,
         strokeWidth,
         fill: 'transparent',
         text: value,
@@ -273,7 +381,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   }, [
     textInput,
     shapes,
-    color,
+    textColor,
     strokeWidth,
     opacity,
     strokeStyle,
@@ -303,7 +411,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
     setFontFamily(shape.fontFamily ?? 'sans')
     setFontSize(shape.fontSize ?? 'M')
     setTextAlign(shape.textAlign ?? 'left')
-    setColor(shape.color)
+    setTextColor(shape.color)
 
     setTextInput({
       x: shape.x,
@@ -328,13 +436,32 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
     const screenPos = getScreenPos(e)
     startPos.current = pos
 
-    // Double-click detection for text editing
+    // Laser pointer
+    if (tool === 'laser') {
+      isLasering.current = true
+      laserPoints.current.push({ x: pos.x, y: pos.y, time: Date.now() })
+      return
+    }
+
+    // Embed tool — show URL input
+    if (tool === 'embed') {
+      setEmbedInput({ x: pos.x, y: pos.y, screenX: screenPos.x, screenY: screenPos.y, url: '' })
+      setTimeout(() => embedInputRef.current?.focus(), 0)
+      return
+    }
+
+    // Double-click detection for text editing and embed viewing
     const now = Date.now()
     if (tool === 'select') {
       const found = [...shapes].reverse().find((s) => hitTest(s, pos.x, pos.y))
-      if (found && found.type === 'text') {
-        if (now - lastClickTime.current < 400 && lastClickId.current === found.id) {
+      if (found && now - lastClickTime.current < 400 && lastClickId.current === found.id) {
+        if (found.type === 'text') {
           startEditingText(found, screenPos.x, screenPos.y)
+          lastClickTime.current = 0
+          return
+        }
+        if (found.type === 'embed' && found.url) {
+          setActiveEmbedId(found.id)
           lastClickTime.current = 0
           return
         }
@@ -373,7 +500,13 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         setIsDrawing(true)
       } else {
         if (!e.shiftKey) setSelectedIds(new Set())
-        selectionBoxStart.current = pos
+        if (e.altKey) {
+          // Lasso selection
+          isLassoing.current = true
+          lassoPoints.current = [[pos.x, pos.y]]
+        } else {
+          selectionBoxStart.current = pos
+        }
       }
       return
     }
@@ -389,6 +522,12 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
           return next
         })
       }
+      return
+    }
+
+    if (tool === 'image') {
+      pendingImagePos.current = pos
+      fileInputRef.current?.click()
       return
     }
 
@@ -417,6 +556,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
       fontFamily,
       fontSize,
       textAlign,
+      label: tool === 'frame' ? 'Frame' : undefined,
       points:
         tool === 'freehand'
           ? [[0, 0]]
@@ -442,6 +582,22 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
     }
 
     const pos = getPos(e)
+
+    // Laser pointer tracking
+    if (isLasering.current) {
+      laserPoints.current.push({ x: pos.x, y: pos.y, time: Date.now() })
+      render()
+      return
+    }
+
+    // Lasso selection tracking
+    if (isLassoing.current) {
+      lassoPoints.current.push([pos.x, pos.y])
+      const intersecting = shapes.filter((s) => intersectsPolygon(s, lassoPoints.current))
+      setSelectedIds(new Set(intersecting.map((s) => s.id)))
+      render()
+      return
+    }
 
     if (selectionBoxStart.current) {
       const sx = selectionBoxStart.current.x
@@ -476,8 +632,18 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
       const dx = pos.x - startPos.current.x
       const dy = pos.y - startPos.current.y
       startPos.current = pos
+      // Collect child IDs of any selected frames
+      const frameChildIds = new Set<string>()
+      for (const id of selectedIds) {
+        const shape = shapes.find((s) => s.id === id)
+        if (shape?.type === 'frame' && shape.childIds) {
+          for (const cid of shape.childIds) frameChildIds.add(cid)
+        }
+      }
       onShapesChange(
-        shapes.map((s) => (selectedIds.has(s.id) ? { ...s, x: s.x + dx, y: s.y + dy } : s)),
+        shapes.map((s) =>
+          selectedIds.has(s.id) || frameChildIds.has(s.id) ? { ...s, x: s.x + dx, y: s.y + dy } : s,
+        ),
       )
       return
     }
@@ -504,6 +670,21 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   }
 
   const handleMouseUp = () => {
+    // Lasso selection finalize
+    if (isLassoing.current) {
+      isLassoing.current = false
+      lassoPoints.current = []
+      render()
+      return
+    }
+
+    // Laser pointer — stop collecting but trail keeps fading
+    if (isLasering.current) {
+      isLasering.current = false
+      render() // triggers fade animation via requestAnimationFrame
+      return
+    }
+
     if (selectionBoxStart.current) {
       selectionBoxStart.current = null
       setSelectionBox(null)
@@ -522,14 +703,42 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
       pushUndo()
       resizeHandle.current = null
       resizeShapeId.current = null
+      // Recompute frame children after resize
+      const resizedId = resizeShapeId.current
+      if (resizedId) {
+        const resizedShape = shapes.find((s) => s.id === resizedId)
+        if (resizedShape?.type === 'frame') {
+          onShapesChange(
+            shapes.map((s) =>
+              s.id === resizedId ? { ...s, childIds: getFrameChildren(s, shapes) } : s,
+            ),
+          )
+        }
+      }
       return
     }
 
-    if (tool === 'select') return
+    if (tool === 'select') {
+      // After moving, recompute childIds for all frames
+      const hasFrames = shapes.some((s) => s.type === 'frame')
+      if (hasFrames) {
+        onShapesChange(
+          shapes.map((s) =>
+            s.type === 'frame' ? { ...s, childIds: getFrameChildren(s, shapes) } : s,
+          ),
+        )
+      }
+      return
+    }
 
     if (drawingShape.current) {
       pushUndo()
-      onShapesChange([...shapes, drawingShape.current])
+      const newShape = drawingShape.current
+      // If it's a frame, compute its children
+      if (newShape.type === 'frame') {
+        newShape.childIds = getFrameChildren(newShape, shapes)
+      }
+      onShapesChange([...shapes, newShape])
       drawingShape.current = null
     }
   }
@@ -662,7 +871,8 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   const getCursor = () => {
     if (tool === 'hand') return 'cursor-grab'
     if (tool === 'text') return 'cursor-text'
-    if (tool === 'eraser') return 'cursor-pointer'
+    if (tool === 'eraser' || tool === 'image') return 'cursor-pointer'
+    if (tool === 'embed') return 'cursor-cell'
     if (tool !== 'select') return 'cursor-crosshair'
     return 'cursor-default'
   }
@@ -679,6 +889,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         fill={fill}
         strokeStyle={strokeStyle}
         opacity={opacity}
+        textColor={textColor}
         fontFamily={fontFamily}
         fontSize={fontSize}
         textAlign={textAlign}
@@ -688,6 +899,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         onFillChange={setFill}
         onStrokeStyleChange={setStrokeStyle}
         onOpacityChange={setOpacity}
+        onTextColorChange={setTextColor}
         onFontFamilyChange={setFontFamily}
         onFontSizeChange={setFontSize}
         onTextAlignChange={setTextAlign}
@@ -703,6 +915,17 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         }}
         hasSelection={selectedIds.size > 0}
         onReorder={handleReorder}
+        selectedFrameLabel={
+          selectedIds.size === 1
+            ? shapes.find((s) => s.id === [...selectedIds][0] && s.type === 'frame')?.label
+            : undefined
+        }
+        onFrameLabelChange={(label: string) => {
+          const frameId = [...selectedIds][0]
+          if (frameId) {
+            onShapesChange(shapes.map((s) => (s.id === frameId ? { ...s, label } : s)))
+          }
+        }}
       />
       <canvas
         ref={canvasRef}
@@ -731,7 +954,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
             top: textInput.screenY - 4,
             fontSize: `${textInputFontSize * zoom}px`,
             fontFamily: textInputFontFamily,
-            color,
+            color: textColor,
             minWidth: 40,
             minHeight: textInputFontSize * zoom * 1.3,
             textAlign,
@@ -740,6 +963,89 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
           rows={1}
         />
       )}
+      {/* Embed URL input */}
+      {embedInput && (
+        <input
+          ref={embedInputRef}
+          type="url"
+          value={embedInput.url}
+          onChange={(e) => setEmbedInput({ ...embedInput, url: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && embedInput.url.trim()) {
+              pushUndo()
+              onShapesChange([
+                ...shapes,
+                createShape({
+                  type: 'embed',
+                  x: embedInput.x,
+                  y: embedInput.y,
+                  width: 400,
+                  height: 300,
+                  url: embedInput.url.trim(),
+                  color,
+                  strokeWidth,
+                  fill: 'transparent',
+                  opacity,
+                  strokeStyle,
+                }),
+              ])
+              setEmbedInput(null)
+              setTool('select')
+            }
+            if (e.key === 'Escape') setEmbedInput(null)
+          }}
+          onBlur={() => setEmbedInput(null)}
+          placeholder="Paste URL and press Enter..."
+          className="absolute bg-white dark:bg-dark-card border border-gray-300 dark:border-dark-border rounded-lg px-3 py-2 text-sm shadow-lg w-80 z-20"
+          style={{ left: embedInput.screenX, top: embedInput.screenY }}
+        />
+      )}
+      {/* Embed iframe overlay */}
+      {activeEmbedId &&
+        (() => {
+          const embedShape = shapes.find((s) => s.id === activeEmbedId)
+          if (!embedShape?.url) return null
+          const left = embedShape.x * zoom + pan.x
+          const top = embedShape.y * zoom + pan.y
+          const width = embedShape.width * zoom
+          const height = embedShape.height * zoom
+          return (
+            <div
+              className="absolute z-20 border border-gray-300 dark:border-dark-border rounded-lg overflow-hidden shadow-lg"
+              style={{ left, top, width, height }}
+            >
+              <div className="h-6 bg-gray-100 dark:bg-dark-card flex items-center justify-between px-2">
+                <span className="text-[10px] text-french-gray truncate flex-1">
+                  {embedShape.url}
+                </span>
+                <button
+                  onClick={() => setActiveEmbedId(null)}
+                  className="text-xs text-french-gray hover:text-jet dark:hover:text-dark-text ml-2"
+                >
+                  x
+                </button>
+              </div>
+              <iframe
+                src={embedShape.url}
+                sandbox="allow-scripts allow-same-origin"
+                className="w-full bg-white"
+                style={{ height: height - 24 }}
+                title="Embedded content"
+              />
+            </div>
+          )
+        })()}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleImageFile(file)
+          e.target.value = ''
+        }}
+      />
     </div>
   )
 }

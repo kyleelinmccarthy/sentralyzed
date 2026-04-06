@@ -7,6 +7,7 @@ export const assignableEntityTypeSchema = z.enum([
   'whiteboard',
   'expense',
   'client',
+  'asset',
 ])
 export const assignmentRoleSchema = z.enum([
   'owner',

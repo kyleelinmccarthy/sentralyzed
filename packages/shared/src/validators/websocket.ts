@@ -19,6 +19,7 @@ export const chatMessagePayloadSchema = z.object({
   channelId: z.string().uuid(),
   content: z.string().min(1),
   replyToId: z.string().uuid().optional(),
+  tempId: z.string().optional(),
 })
 
 export const typingPayloadSchema = z.object({

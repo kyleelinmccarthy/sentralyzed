@@ -1,6 +1,7 @@
 import { eq, and, isNull, desc, asc, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { forumCategories, forumThreads, forumReplies, forumReactions } from '../db/schema/forums.js'
+import { DEFAULT_PAGE_LIMIT } from './utils/db-helpers.js'
 
 export class ForumsService {
   // Categories
@@ -32,17 +33,13 @@ export class ForumsService {
   // Threads
   async listThreads(categoryId?: string, search?: string) {
     if (search) {
-      return db.query.forumThreads.findMany({
-        where: sql`to_tsvector('english', ${forumThreads.title}) @@ plainto_tsquery('english', ${search})`,
-        orderBy: [desc(forumThreads.createdAt)],
-        limit: 50,
-      })
+      return this.searchThreads(search, DEFAULT_PAGE_LIMIT)
     }
     const conditions = categoryId ? [eq(forumThreads.categoryId, categoryId)] : []
     return db.query.forumThreads.findMany({
       where: conditions.length ? and(...conditions) : undefined,
       orderBy: [desc(forumThreads.isPinned), desc(forumThreads.createdAt)],
-      limit: 50,
+      limit: DEFAULT_PAGE_LIMIT,
     })
   }
 
@@ -101,6 +98,17 @@ export class ForumsService {
     return reply!
   }
 
+  async updateReply(id: string, userId: string, data: { content?: unknown }) {
+    const reply = await db.query.forumReplies.findFirst({ where: eq(forumReplies.id, id) })
+    if (!reply || reply.authorId !== userId) return null
+    const [updated] = await db
+      .update(forumReplies)
+      .set({ content: data.content })
+      .where(eq(forumReplies.id, id))
+      .returning()
+    return updated
+  }
+
   async deleteReply(id: string) {
     await db.update(forumReplies).set({ deletedAt: new Date() }).where(eq(forumReplies.id, id))
   }
@@ -124,11 +132,16 @@ export class ForumsService {
   }
 
   async search(query: string) {
-    const threads = await db.query.forumThreads.findMany({
-      where: sql`to_tsvector('english', ${forumThreads.title}) @@ plainto_tsquery('english', ${query})`,
-      limit: 20,
-    })
+    const threads = await this.searchThreads(query, 20)
     return { threads }
+  }
+
+  private async searchThreads(query: string, limit: number) {
+    return db.query.forumThreads.findMany({
+      where: sql`to_tsvector('english', ${forumThreads.title}) @@ plainto_tsquery('english', ${query})`,
+      orderBy: [desc(forumThreads.createdAt)],
+      limit,
+    })
   }
 }
 

@@ -3,10 +3,11 @@ import { db } from '../db/index.js'
 import { files } from '../db/schema/files.js'
 import { encrypt, decrypt } from '../lib/encryption.js'
 import { randomUUID } from 'node:crypto'
+import { whereActiveById } from './utils/db-helpers.js'
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
+export const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
 
-const ALLOWED_MIME_TYPES = [
+export const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
   'image/gif',
@@ -31,60 +32,16 @@ export interface FileMetadata {
   sizeBytes: number
 }
 
-// StorageProvider interface (Dependency Inversion)
-export interface StorageProvider {
-  upload(data: Buffer, metadata: FileMetadata): Promise<{ id: string; filename: string }>
-  download(fileId: string): Promise<{ data: Buffer; metadata: FileMetadata }>
-  delete(fileId: string): Promise<void>
-}
-
-export class PostgresStorageProvider implements StorageProvider {
-  async upload(data: Buffer, metadata: FileMetadata) {
-    if (data.length > MAX_FILE_SIZE) {
-      throw new Error(`File exceeds maximum size of ${MAX_FILE_SIZE / 1024 / 1024}MB`)
-    }
-
-    if (!ALLOWED_MIME_TYPES.includes(metadata.mimeType)) {
-      throw new Error('File type not allowed')
-    }
-
-    const { encrypted, iv } = encrypt(data)
-    const filename = `${randomUUID()}-${metadata.originalName}`
-
-    return { id: '', filename, encrypted, iv }
+function validateFile(data: Buffer, metadata: FileMetadata) {
+  if (data.length > MAX_FILE_SIZE) {
+    throw new Error(`File exceeds maximum size of ${MAX_FILE_SIZE / 1024 / 1024}MB`)
   }
-
-  async download(fileId: string) {
-    const file = await db.query.files.findFirst({
-      where: and(eq(files.id, fileId), isNull(files.deletedAt)),
-    })
-
-    if (!file) throw new Error('File not found')
-
-    const decrypted = decrypt(file.encryptedData, file.encryptionIv)
-
-    return {
-      data: decrypted,
-      metadata: {
-        originalName: file.originalName,
-        mimeType: file.mimeType,
-        sizeBytes: file.sizeBytes,
-      },
-    }
-  }
-
-  async delete(fileId: string) {
-    await db.update(files).set({ deletedAt: new Date() }).where(eq(files.id, fileId))
+  if (!ALLOWED_MIME_TYPES.includes(metadata.mimeType)) {
+    throw new Error('File type not allowed')
   }
 }
 
 export class FilesService {
-  private storage: StorageProvider
-
-  constructor(storage?: StorageProvider) {
-    this.storage = storage || new PostgresStorageProvider()
-  }
-
   async upload(
     data: Buffer,
     metadata: FileMetadata,
@@ -92,13 +49,7 @@ export class FilesService {
     entityType: string,
     entityId: string,
   ) {
-    if (data.length > MAX_FILE_SIZE) {
-      throw new Error(`File exceeds maximum size of ${MAX_FILE_SIZE / 1024 / 1024}MB`)
-    }
-
-    if (!ALLOWED_MIME_TYPES.includes(metadata.mimeType)) {
-      throw new Error('File type not allowed')
-    }
+    validateFile(data, metadata)
 
     const { encrypted, iv } = encrypt(data)
     const filename = `${randomUUID()}-${metadata.originalName}`
@@ -132,7 +83,22 @@ export class FilesService {
   }
 
   async download(fileId: string) {
-    return this.storage.download(fileId)
+    const file = await db.query.files.findFirst({
+      where: whereActiveById(files.id, fileId, files.deletedAt),
+    })
+
+    if (!file) throw new Error('File not found')
+
+    const decrypted = decrypt(file.encryptedData, file.encryptionIv)
+
+    return {
+      data: decrypted,
+      metadata: {
+        originalName: file.originalName,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+      },
+    }
   }
 
   async listByEntity(entityType: string, entityId: string) {
@@ -150,7 +116,7 @@ export class FilesService {
   }
 
   async softDelete(fileId: string) {
-    await this.storage.delete(fileId)
+    await db.update(files).set({ deletedAt: new Date() }).where(eq(files.id, fileId))
   }
 }
 

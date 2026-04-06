@@ -1,0 +1,1 @@
+-- intentionally empty: tables removed in this auto-generated migration were re-added in 0003

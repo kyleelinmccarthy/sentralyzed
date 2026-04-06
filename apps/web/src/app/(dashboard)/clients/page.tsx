@@ -27,7 +27,23 @@ const statusColors: Record<string, string> = {
 }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const phoneRegex = /^[+]?[\d\s\-().]{7,50}$/
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+}
+
+function stripPhoneFormatting(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function isValidPhone(value: string): boolean {
+  const digits = stripPhoneFormatting(value)
+  return digits.length === 0 || digits.length === 10
+}
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -40,6 +56,7 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     void loadClients()
@@ -55,30 +72,56 @@ export default function ClientsPage() {
     }
   }
 
+  const validateField = (field: string, value: string) => {
+    if (field === 'name' && !value.trim()) return 'Name is required'
+    if (field === 'email' && value && !emailRegex.test(value)) return 'Invalid email address'
+    if (field === 'phone' && value && !isValidPhone(value)) return 'Phone number must be 10 digits'
+    return ''
+  }
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    if (!name.trim()) newErrors.name = 'Name is required'
-    if (email && !emailRegex.test(email)) newErrors.email = 'Invalid email address'
-    if (phone && !phoneRegex.test(phone)) newErrors.phone = 'Invalid phone number'
+    const nameErr = validateField('name', name)
+    const emailErr = validateField('email', email)
+    const phoneErr = validateField('phone', phone)
+    if (nameErr) newErrors.name = nameErr
+    if (emailErr) newErrors.email = emailErr
+    if (phoneErr) newErrors.phone = phoneErr
     setErrors(newErrors)
+    setTouched({ name: true, email: true, phone: true })
     return Object.keys(newErrors).length === 0
+  }
+
+  const handleBlur = (field: string, value: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+    const err = validateField(field, value)
+    setErrors((prev) =>
+      err
+        ? { ...prev, [field]: err }
+        : (() => {
+            const { [field]: _, ...rest } = prev
+            return rest
+          })(),
+    )
   }
 
   const createClient = async () => {
     if (!validateForm()) return
     setSaving(true)
+    const rawPhone = stripPhoneFormatting(phone)
     try {
       await api.post('/clients', {
-        name,
-        ...(email && { email }),
-        ...(company && { company }),
-        ...(phone && { phone }),
+        name: name.trim(),
+        ...(email && { email: email.trim() }),
+        ...(company && { company: company.trim() }),
+        ...(rawPhone && { phone: rawPhone }),
       })
       setName('')
       setEmail('')
       setCompany('')
       setPhone('')
       setErrors({})
+      setTouched({})
       setShowForm(false)
       void loadClients()
     } catch (e) {
@@ -130,13 +173,23 @@ export default function ClientsPage() {
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value)
-                  setErrors((prev) => {
-                    const { name: _, ...rest } = prev
-                    return rest
-                  })
+                  if (touched.name) {
+                    const err = validateField('name', e.target.value)
+                    setErrors((prev) =>
+                      err
+                        ? { ...prev, name: err }
+                        : (() => {
+                            const { name: _, ...rest } = prev
+                            return rest
+                          })(),
+                    )
+                  }
                 }}
+                onBlur={() => handleBlur('name', name)}
               />
-              {errors.name ? <p className="text-xs text-coral mt-1">{errors.name}</p> : null}
+              {errors.name && touched.name ? (
+                <p className="text-xs text-coral mt-1">{errors.name}</p>
+              ) : null}
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
@@ -146,13 +199,23 @@ export default function ClientsPage() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
-                    setErrors((prev) => {
-                      const { email: _, ...rest } = prev
-                      return rest
-                    })
+                    if (touched.email) {
+                      const err = validateField('email', e.target.value)
+                      setErrors((prev) =>
+                        err
+                          ? { ...prev, email: err }
+                          : (() => {
+                              const { email: _, ...rest } = prev
+                              return rest
+                            })(),
+                      )
+                    }
                   }}
+                  onBlur={() => handleBlur('email', email)}
                 />
-                {errors.email ? <p className="text-xs text-coral mt-1">{errors.email}</p> : null}
+                {errors.email && touched.email ? (
+                  <p className="text-xs text-coral mt-1">{errors.email}</p>
+                ) : null}
               </div>
               <Input
                 placeholder="Company"
@@ -165,14 +228,25 @@ export default function ClientsPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value)
-                    setErrors((prev) => {
-                      const { phone: _, ...rest } = prev
-                      return rest
-                    })
+                    const formatted = formatPhoneNumber(e.target.value)
+                    setPhone(formatted)
+                    if (touched.phone) {
+                      const err = validateField('phone', formatted)
+                      setErrors((prev) =>
+                        err
+                          ? { ...prev, phone: err }
+                          : (() => {
+                              const { phone: _, ...rest } = prev
+                              return rest
+                            })(),
+                      )
+                    }
                   }}
+                  onBlur={() => handleBlur('phone', phone)}
                 />
-                {errors.phone ? <p className="text-xs text-coral mt-1">{errors.phone}</p> : null}
+                {errors.phone && touched.phone ? (
+                  <p className="text-xs text-coral mt-1">{errors.phone}</p>
+                ) : null}
               </div>
             </div>
             <div className="flex justify-end">
@@ -220,7 +294,7 @@ export default function ClientsPage() {
                 {client.phone ? (
                   <div className="flex items-center gap-1.5 text-sm text-slate-gray dark:text-dark-text-secondary">
                     <Phone size={14} strokeWidth={1.5} />
-                    {client.phone}
+                    {formatPhoneNumber(client.phone)}
                   </div>
                 ) : null}
               </Card>

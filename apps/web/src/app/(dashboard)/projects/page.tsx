@@ -19,10 +19,10 @@ interface Project {
 }
 
 const gradients: Record<string, string> = {
-  '#5C6BC0': 'linear-gradient(135deg, #5C6BC0, #3F51B5)',
-  '#3B82F6': 'linear-gradient(135deg, #3B82F6, #2563EB)',
-  '#26A69A': 'linear-gradient(135deg, #26A69A, #00897B)',
-  '#FF7043': 'linear-gradient(135deg, #FF7043, #F4511E)',
+  '#5C6BC0': 'linear-gradient(135deg, #5C6BC0, #3B82F6)',
+  '#3B82F6': 'linear-gradient(135deg, #3B82F6, #5C6BC0)',
+  '#26A69A': 'linear-gradient(135deg, #26A69A, #5C6BC0)',
+  '#FF7043': 'linear-gradient(135deg, #FF7043, #F59E0B)',
 }
 
 export default function ProjectsPage() {

@@ -40,3 +40,13 @@ export interface PresencePayload {
   userId: string
   userName: string
 }
+
+export interface NotificationPayload {
+  notificationId: string
+  activityId: string
+  action: string
+  entityType: string
+  entityId: string
+  metadata: Record<string, unknown>
+  createdAt: string
+}

@@ -4,6 +4,7 @@ import { authMiddleware, requireRole } from '../../middleware/auth.js'
 import { feedbackService } from '../../services/feedback.service.js'
 import {
   createFeedbackSchema,
+  updateFeedbackSchema,
   updateFeedbackStatusSchema,
   createFeedbackResponseSchema,
   feedbackQuerySchema,
@@ -31,6 +32,13 @@ feedbackRouter.get('/:id', async (c) => {
   const feedback = await feedbackService.getWithResponses(c.req.param('id'), user.id, user.role)
   if (!feedback) return c.json({ error: 'Feedback not found' }, 404)
   return c.json({ feedback })
+})
+
+feedbackRouter.patch('/:id', zValidator('json', updateFeedbackSchema), async (c) => {
+  const user = c.get('user')
+  const result = await feedbackService.update(c.req.param('id'), c.req.valid('json'), user.id)
+  if ('error' in result) return c.json({ error: result.error }, 400)
+  return c.json({ feedback: result })
 })
 
 feedbackRouter.patch(

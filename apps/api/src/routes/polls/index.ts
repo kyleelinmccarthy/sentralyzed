@@ -2,7 +2,12 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { authMiddleware } from '../../middleware/auth.js'
 import { pollsService } from '../../services/polls.service.js'
-import { createPollSchema, votePollSchema } from '@sentralyzed/shared/validators/poll'
+import {
+  createPollSchema,
+  votePollSchema,
+  pollContextTypeSchema,
+} from '@sentralyzed/shared/validators/poll'
+import type { PollContextType } from '@sentralyzed/shared/types/poll'
 import type { AppEnv } from '../../types.js'
 
 const pollsRouter = new Hono<AppEnv>()
@@ -10,20 +15,20 @@ pollsRouter.use('*', authMiddleware)
 
 // List polls — optionally filtered by context
 pollsRouter.get('/', async (c) => {
-  const contextType = c.req.query('contextType') as
-    | 'channel'
-    | 'forum'
-    | 'project'
-    | 'goal'
-    | undefined
+  const rawContextType = c.req.query('contextType')
   const contextId = c.req.query('contextId')
   const user = c.get('user')
 
-  if (contextType && contextId) {
-    if (!['channel', 'forum', 'project', 'goal'].includes(contextType)) {
-      return c.json({ error: 'Valid contextType (channel|forum|project|goal) required' }, 400)
+  if (rawContextType && contextId) {
+    const parsed = pollContextTypeSchema.safeParse(rawContextType)
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid contextType' }, 400)
     }
-    const polls = await pollsService.getByContext(contextType, contextId, user.id)
+    const polls = await pollsService.getByContext(
+      parsed.data as PollContextType,
+      contextId,
+      user.id,
+    )
     return c.json({ polls })
   }
 

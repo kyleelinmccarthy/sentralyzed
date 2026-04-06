@@ -5,6 +5,7 @@ import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { Card } from '@/components/ui/card'
 import { PollCard } from '@/components/polls/PollCard'
+import { POLL_CONTEXT_TYPES } from '@sentralyzed/shared/types/poll'
 import type { PollWithResults, PollContextType } from '@sentralyzed/shared/types/poll'
 
 const contextLabels: Record<PollContextType, string> = {
@@ -12,6 +13,14 @@ const contextLabels: Record<PollContextType, string> = {
   forum: 'Forum',
   project: 'Project',
   goal: 'Goal',
+  task: 'Task',
+  client: 'Client',
+  expense: 'Expense',
+  calendar: 'Calendar',
+  user: 'User',
+  whiteboard: 'Whiteboard',
+  feedback: 'Feedback',
+  asset: 'Asset',
 }
 
 export default function PollsPage() {
@@ -58,7 +67,7 @@ export default function PollsPage() {
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {(['all', 'channel', 'forum', 'project', 'goal'] as const).map((type) => (
+        {(['all', ...POLL_CONTEXT_TYPES] as const).map((type) => (
           <button
             key={type}
             onClick={() => setFilter(type)}
@@ -68,7 +77,7 @@ export default function PollsPage() {
                 : 'bg-gray-100 dark:bg-dark-border text-jet dark:text-dark-text hover:bg-gray-200 dark:hover:bg-white/10'
             }`}
           >
-            {type === 'all' ? 'All' : contextLabels[type]}
+            {type === 'all' ? 'All' : contextLabels[type as PollContextType]}
           </button>
         ))}
       </div>
@@ -76,7 +85,8 @@ export default function PollsPage() {
       {filtered.length === 0 ? (
         <Card className="p-6">
           <p className="text-sm text-french-gray text-center">
-            No polls found. Polls can be created from Chat, Forums, Projects, and Goals.
+            No polls found. Polls can be created from Chat, Forums, Projects, Goals, Tasks, Clients,
+            Expenses, Calendar, Users, Whiteboards, and Feedback.
           </p>
         </Card>
       ) : (

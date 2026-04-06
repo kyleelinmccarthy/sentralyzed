@@ -53,21 +53,52 @@ export class AssignmentsService {
     })
   }
 
-  async updateRole(id: string, role: AssignmentRole) {
+  async updateRole(id: string, role: AssignmentRole, actorId?: string) {
+    const existing = actorId
+      ? await db.query.entityAssignments.findFirst({
+          where: eq(entityAssignments.id, id),
+        })
+      : null
+
     const [updated] = await db
       .update(entityAssignments)
       .set({ role })
       .where(eq(entityAssignments.id, id))
       .returning()
+
+    if (updated && existing && actorId) {
+      await activitiesService.log({
+        actorId,
+        action: 'updated',
+        entityType: existing.entityType,
+        entityId: existing.entityId,
+        metadata: { change: 'role_updated', role, userId: existing.userId },
+        notifyUserIds: [existing.userId],
+      })
+    }
+
     return updated
   }
 
-  async remove(id: string): Promise<boolean> {
+  async remove(id: string, actorId?: string): Promise<boolean> {
     const assignment = await db.query.entityAssignments.findFirst({
       where: eq(entityAssignments.id, id),
     })
     if (!assignment) return false
+
     await db.delete(entityAssignments).where(eq(entityAssignments.id, id))
+
+    if (actorId) {
+      await activitiesService.log({
+        actorId,
+        action: 'deleted',
+        entityType: assignment.entityType,
+        entityId: assignment.entityId,
+        metadata: { change: 'unassigned', userId: assignment.userId },
+        notifyUserIds: [assignment.userId],
+      })
+    }
+
     return true
   }
 }

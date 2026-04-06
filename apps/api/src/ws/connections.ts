@@ -45,6 +45,15 @@ export async function isUserOnline(userId: string): Promise<boolean> {
   return count > 0
 }
 
+export function sendToUser(userId: string, message: string) {
+  const userConns = getConnectionsByUserId(userId)
+  for (const conn of userConns) {
+    if (conn.ws.readyState === 1) {
+      conn.ws.send(message)
+    }
+  }
+}
+
 export function broadcastToChannel(
   _channelId: string,
   memberIds: string[],

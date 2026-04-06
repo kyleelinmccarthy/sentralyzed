@@ -1,5 +1,15 @@
-export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'freehand' | 'text' | 'arrow' | 'diamond'
-export type ToolType = ShapeType | 'select' | 'eraser' | 'hand'
+export type ShapeType =
+  | 'rectangle'
+  | 'ellipse'
+  | 'line'
+  | 'freehand'
+  | 'text'
+  | 'arrow'
+  | 'diamond'
+  | 'image'
+  | 'frame'
+  | 'embed'
+export type ToolType = ShapeType | 'select' | 'eraser' | 'hand' | 'laser'
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted'
 export type FontFamily = 'hand' | 'serif' | 'mono' | 'sans'
 export type FontSize = 'S' | 'M' | 'L' | 'XL'
@@ -19,6 +29,10 @@ export interface Shape {
   strokeWidth: number
   fill: string
   text?: string
+  imageUrl?: string
+  url?: string // for embed shapes
+  label?: string // for frame shapes
+  childIds?: string[] // for frame shapes — IDs of contained shapes
   rotation: number
   opacity: number // 0-100
   strokeStyle: StrokeStyle
@@ -39,10 +53,28 @@ export interface Rect {
 export const FONT_SIZE_PX: Record<FontSize, number> = { S: 16, M: 20, L: 28, XL: 40 }
 
 export const FONT_FAMILY_CSS: Record<FontFamily, string> = {
-  hand: "'Segoe Print', 'Comic Sans MS', cursive",
+  hand: "Caveat, 'Segoe Print', cursive",
   serif: "Georgia, 'Times New Roman', serif",
   mono: "'Fira Code', 'Courier New', monospace",
   sans: 'Inter, system-ui, sans-serif',
+}
+
+// ─── Image Constants ───
+
+export const IMAGE_MAX_DIMENSION = 800
+
+export function constrainImageDimensions(
+  naturalWidth: number,
+  naturalHeight: number,
+): { width: number; height: number } {
+  if (naturalWidth <= IMAGE_MAX_DIMENSION && naturalHeight <= IMAGE_MAX_DIMENSION) {
+    return { width: naturalWidth, height: naturalHeight }
+  }
+  const scale = IMAGE_MAX_DIMENSION / Math.max(naturalWidth, naturalHeight)
+  return {
+    width: Math.round(naturalWidth * scale),
+    height: Math.round(naturalHeight * scale),
+  }
 }
 
 // ─── Factory ───
@@ -81,6 +113,9 @@ export function hitTest(shape: Shape, px: number, py: number): boolean {
   switch (shape.type) {
     case 'rectangle':
     case 'text':
+    case 'image':
+    case 'frame':
+    case 'embed':
       return hitTestRect(shape, px, py)
     case 'ellipse':
       return hitTestEllipse(shape, px, py)
@@ -313,6 +348,23 @@ export function measureText(
   return { width: maxWidth, height: lines.length * lineHeight }
 }
 
+// ─── Image Cache ───
+
+const imageCache = new Map<string, HTMLImageElement>()
+
+export function loadCachedImage(url: string, onLoad?: () => void): HTMLImageElement | null {
+  const cached = imageCache.get(url)
+  if (cached?.complete) return cached
+
+  if (!cached) {
+    const img = new Image()
+    img.src = url
+    imageCache.set(url, img)
+    if (onLoad) img.onload = onLoad
+  }
+  return null
+}
+
 // ─── Rendering ───
 
 function applyStrokeStyle(ctx: CanvasRenderingContext2D, style: StrokeStyle, strokeWidth: number) {
@@ -357,6 +409,15 @@ export function renderShape(ctx: CanvasRenderingContext2D, shape: Shape) {
       break
     case 'text':
       renderText(ctx, shape)
+      break
+    case 'image':
+      renderImage(ctx, shape)
+      break
+    case 'frame':
+      renderFrame(ctx, shape)
+      break
+    case 'embed':
+      renderEmbed(ctx, shape)
       break
   }
 
@@ -456,6 +517,229 @@ function renderText(ctx: CanvasRenderingContext2D, shape: Shape) {
 
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
+}
+
+function renderImage(ctx: CanvasRenderingContext2D, shape: Shape) {
+  if (!shape.imageUrl) return
+  const img = loadCachedImage(shape.imageUrl)
+  if (img) {
+    ctx.drawImage(img, shape.x, shape.y, shape.width, shape.height)
+  } else {
+    // Placeholder while loading
+    ctx.fillStyle = '#F3F4F6'
+    ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+    ctx.strokeStyle = '#D1D5DB'
+    ctx.lineWidth = 1
+    ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+    ctx.fillStyle = '#9CA3AF'
+    ctx.font = '14px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('Loading...', shape.x + shape.width / 2, shape.y + shape.height / 2)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+  }
+}
+
+function renderFrame(ctx: CanvasRenderingContext2D, shape: Shape) {
+  // Light tinted background
+  if (shape.fill !== 'transparent') {
+    ctx.save()
+    ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.05
+    ctx.fillStyle = shape.fill
+    ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+    ctx.restore()
+  }
+  // Dashed border
+  ctx.save()
+  ctx.setLineDash([6, 4])
+  ctx.strokeStyle = shape.color
+  ctx.lineWidth = 1
+  ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+  ctx.setLineDash([])
+  // Label above top-left
+  const label = shape.label || 'Frame'
+  ctx.font = '12px Inter, system-ui, sans-serif'
+  ctx.fillStyle = shape.color
+  ctx.textBaseline = 'bottom'
+  ctx.textAlign = 'left'
+  ctx.fillText(label, shape.x, shape.y - 4)
+  ctx.textBaseline = 'alphabetic'
+  ctx.restore()
+}
+
+function renderEmbed(ctx: CanvasRenderingContext2D, shape: Shape) {
+  // Background
+  ctx.fillStyle = '#F3F4F6'
+  ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+  // Dashed border
+  ctx.save()
+  ctx.setLineDash([6, 4])
+  ctx.strokeStyle = '#9CA3AF'
+  ctx.lineWidth = 1
+  ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+  ctx.setLineDash([])
+  ctx.restore()
+  // Link icon (simple chain link drawing)
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2 - 10
+  ctx.strokeStyle = '#64748B'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(cx - 8, cy, 8, -Math.PI * 0.5, Math.PI * 0.5)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(cx + 8, cy, 8, Math.PI * 0.5, -Math.PI * 0.5)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx - 4, cy)
+  ctx.lineTo(cx + 4, cy)
+  ctx.stroke()
+  // Truncated URL text
+  if (shape.url) {
+    ctx.fillStyle = '#64748B'
+    ctx.font = '12px Inter, system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    const maxChars = Math.floor(shape.width / 7)
+    const display =
+      shape.url.length > maxChars ? shape.url.substring(0, maxChars) + '...' : shape.url
+    ctx.fillText(display, cx, cy + 20)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+  }
+}
+
+// ─── Frame Helpers ───
+
+export function getFrameChildren(frame: Shape, allShapes: Shape[]): string[] {
+  return allShapes
+    .filter((s) => {
+      if (s.id === frame.id || s.type === 'frame') return false
+      const box = getBoundingBox(s)
+      const centerX = box.x + box.width / 2
+      const centerY = box.y + box.height / 2
+      return (
+        centerX >= frame.x &&
+        centerX <= frame.x + frame.width &&
+        centerY >= frame.y &&
+        centerY <= frame.y + frame.height
+      )
+    })
+    .map((s) => s.id)
+}
+
+export function moveFrameWithChildren(
+  frame: Shape,
+  allShapes: Shape[],
+  dx: number,
+  dy: number,
+): Shape[] {
+  const childSet = new Set(frame.childIds ?? [])
+  return allShapes.map((s) => {
+    if (s.id === frame.id || childSet.has(s.id)) {
+      return { ...s, x: s.x + dx, y: s.y + dy }
+    }
+    return s
+  })
+}
+
+// ─── Lasso Selection ───
+
+export function pointInPolygon(px: number, py: number, polygon: number[][]): boolean {
+  if (polygon.length < 3) return false
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i]![0]!
+    const yi = polygon[i]![1]!
+    const xj = polygon[j]![0]!
+    const yj = polygon[j]![1]!
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+export function intersectsPolygon(shape: Shape, polygon: number[][]): boolean {
+  if (polygon.length < 3) return false
+  const box = getBoundingBox(shape)
+  // Check if any bbox corner is inside polygon
+  const corners: [number, number][] = [
+    [box.x, box.y],
+    [box.x + box.width, box.y],
+    [box.x, box.y + box.height],
+    [box.x + box.width, box.y + box.height],
+  ]
+  for (const [cx, cy] of corners) {
+    if (pointInPolygon(cx, cy, polygon)) return true
+  }
+  // Check if any polygon vertex is inside bbox
+  for (const [vx, vy] of polygon) {
+    if (vx! >= box.x && vx! <= box.x + box.width && vy! >= box.y && vy! <= box.y + box.height) {
+      return true
+    }
+  }
+  return false
+}
+
+export function renderLassoPath(ctx: CanvasRenderingContext2D, points: number[][]): void {
+  if (points.length < 2) return
+  ctx.save()
+  ctx.strokeStyle = '#5C6BC0'
+  ctx.fillStyle = 'rgba(92, 107, 192, 0.08)'
+  ctx.lineWidth = 1
+  ctx.setLineDash([3, 3])
+  ctx.beginPath()
+  ctx.moveTo(points[0]![0]!, points[0]![1]!)
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i]![0]!, points[i]![1]!)
+  }
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.restore()
+}
+
+// ─── Laser Pointer ───
+
+export interface LaserPoint {
+  x: number
+  y: number
+  time: number
+}
+
+const LASER_LIFETIME_MS = 1000
+
+export function renderLaserTrail(
+  ctx: CanvasRenderingContext2D,
+  points: LaserPoint[],
+): LaserPoint[] {
+  const now = Date.now()
+  const alive = points.filter((p) => now - p.time < LASER_LIFETIME_MS)
+  if (alive.length < 2) return alive
+
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 3
+
+  for (let i = 1; i < alive.length; i++) {
+    const age = now - alive[i]!.time
+    const alpha = 1 - age / LASER_LIFETIME_MS
+    ctx.globalAlpha = alpha
+    ctx.strokeStyle = '#FF4444'
+    ctx.shadowBlur = 8
+    ctx.shadowColor = '#FF4444'
+    ctx.beginPath()
+    ctx.moveTo(alive[i - 1]!.x, alive[i - 1]!.y)
+    ctx.lineTo(alive[i]!.x, alive[i]!.y)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+  return alive
 }
 
 // ─── Selection Rendering ───

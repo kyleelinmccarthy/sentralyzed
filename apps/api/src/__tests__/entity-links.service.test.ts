@@ -6,6 +6,16 @@ const mockDelete = vi.fn()
 const mockFindMany = vi.fn()
 const mockFindFirst = vi.fn()
 
+// Source entity query mocks
+const mockMessageFindFirst = vi.fn()
+const mockForumThreadFindFirst = vi.fn()
+const mockForumReplyFindFirst = vi.fn()
+
+// Target entity query mocks
+const mockProjectFindFirst = vi.fn()
+const mockGoalFindFirst = vi.fn()
+const mockTaskFindFirst = vi.fn()
+
 vi.mock('../db/index.js', () => ({
   db: {
     insert: mockInsert,
@@ -15,6 +25,12 @@ vi.mock('../db/index.js', () => ({
         findMany: mockFindMany,
         findFirst: mockFindFirst,
       },
+      messages: { findFirst: mockMessageFindFirst },
+      forumThreads: { findFirst: mockForumThreadFindFirst },
+      forumReplies: { findFirst: mockForumReplyFindFirst },
+      projects: { findFirst: mockProjectFindFirst },
+      goals: { findFirst: mockGoalFindFirst },
+      tasks: { findFirst: mockTaskFindFirst },
     },
   },
 }))
@@ -31,37 +47,80 @@ describe('EntityLinksService', () => {
   })
 
   describe('create', () => {
-    it('inserts a link and returns it', async () => {
-      const link = {
-        id: 'link-1',
-        sourceType: 'message',
-        sourceId: 'msg-1',
-        targetType: 'task',
-        targetId: 'task-1',
-        createdBy: 'user-1',
-        createdAt: new Date(),
-      }
+    const validData = {
+      sourceType: 'message' as const,
+      sourceId: 'msg-1',
+      targetType: 'task' as const,
+      targetId: 'task-1',
+      createdBy: 'user-1',
+    }
+
+    it('inserts a link and returns it when source and target exist', async () => {
+      const link = { id: 'link-1', ...validData, createdAt: new Date() }
+      mockMessageFindFirst.mockResolvedValue({ id: 'msg-1' })
+      mockTaskFindFirst.mockResolvedValue({ id: 'task-1' })
+
       const returning = vi.fn().mockResolvedValue([link])
       const values = vi.fn().mockReturnValue({ returning })
       mockInsert.mockReturnValue({ values })
 
-      const result = await service.create({
-        sourceType: 'message',
-        sourceId: 'msg-1',
-        targetType: 'task',
-        targetId: 'task-1',
-        createdBy: 'user-1',
-      })
+      const result = await service.create(validData)
 
       expect(result).toEqual(link)
       expect(mockInsert).toHaveBeenCalled()
-      expect(values).toHaveBeenCalledWith({
-        sourceType: 'message',
-        sourceId: 'msg-1',
-        targetType: 'task',
-        targetId: 'task-1',
-        createdBy: 'user-1',
-      })
+    })
+
+    it('throws when source message does not exist', async () => {
+      mockMessageFindFirst.mockResolvedValue(undefined)
+
+      await expect(service.create(validData)).rejects.toThrow('Source message not found')
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('throws when source forum_thread does not exist', async () => {
+      mockForumThreadFindFirst.mockResolvedValue(undefined)
+
+      await expect(service.create({ ...validData, sourceType: 'forum_thread' })).rejects.toThrow(
+        'Source forum_thread not found',
+      )
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('throws when source forum_reply does not exist', async () => {
+      mockForumReplyFindFirst.mockResolvedValue(undefined)
+
+      await expect(service.create({ ...validData, sourceType: 'forum_reply' })).rejects.toThrow(
+        'Source forum_reply not found',
+      )
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('throws when target project does not exist', async () => {
+      mockMessageFindFirst.mockResolvedValue({ id: 'msg-1' })
+      mockProjectFindFirst.mockResolvedValue(undefined)
+
+      await expect(
+        service.create({ ...validData, targetType: 'project', targetId: 'proj-1' }),
+      ).rejects.toThrow('Target project not found')
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('throws when target goal does not exist', async () => {
+      mockMessageFindFirst.mockResolvedValue({ id: 'msg-1' })
+      mockGoalFindFirst.mockResolvedValue(undefined)
+
+      await expect(
+        service.create({ ...validData, targetType: 'goal', targetId: 'goal-1' }),
+      ).rejects.toThrow('Target goal not found')
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('throws when target task does not exist', async () => {
+      mockMessageFindFirst.mockResolvedValue({ id: 'msg-1' })
+      mockTaskFindFirst.mockResolvedValue(undefined)
+
+      await expect(service.create(validData)).rejects.toThrow('Target task not found')
+      expect(mockInsert).not.toHaveBeenCalled()
     })
   })
 
@@ -135,6 +194,28 @@ describe('EntityLinksService', () => {
 
       expect(result).toBe(false)
       expect(mockDelete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('removeBySource', () => {
+    it('deletes all links for a given source', async () => {
+      const where = vi.fn().mockResolvedValue(undefined)
+      mockDelete.mockReturnValue({ where })
+
+      await service.removeBySource('message', 'msg-1')
+
+      expect(mockDelete).toHaveBeenCalled()
+    })
+  })
+
+  describe('removeByTarget', () => {
+    it('deletes all links for a given target', async () => {
+      const where = vi.fn().mockResolvedValue(undefined)
+      mockDelete.mockReturnValue({ where })
+
+      await service.removeByTarget('task', 'task-1')
+
+      expect(mockDelete).toHaveBeenCalled()
     })
   })
 })

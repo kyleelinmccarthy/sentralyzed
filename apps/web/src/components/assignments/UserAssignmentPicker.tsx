@@ -45,7 +45,7 @@ export function UserAssignmentPicker({
     try {
       const [assignmentData, userData] = await Promise.all([
         api.get<{ assignments: Assignment[] }>(`/assignments/entity/${entityType}/${entityId}`),
-        api.get<{ users: User[] }>('/chat/users'),
+        api.get<{ users: User[] }>('/assignments/users'),
       ])
       setAssignments(assignmentData.assignments)
       setUsers(userData.users)

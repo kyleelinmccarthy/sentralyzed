@@ -34,7 +34,14 @@ calendarRouter.post(
       recurrenceRule: z.string().optional(),
       location: z.string().optional(),
       color: z.string().optional(),
-      attendeeIds: z.array(z.string().uuid()).optional(),
+      attendees: z
+        .array(
+          z.object({
+            userId: z.string().uuid(),
+            requirement: z.enum(['required', 'optional']),
+          }),
+        )
+        .optional(),
     }),
   ),
   async (c) => {
@@ -50,11 +57,19 @@ calendarRouter.patch(
     'json',
     z.object({
       title: z.string().min(1).max(255).optional(),
-      description: z.string().optional(),
+      description: z.string().nullable().optional(),
       startTime: z.string().optional(),
       endTime: z.string().optional(),
       color: z.string().optional(),
-      location: z.string().optional(),
+      location: z.string().nullable().optional(),
+      attendees: z
+        .array(
+          z.object({
+            userId: z.string().uuid(),
+            requirement: z.enum(['required', 'optional']),
+          }),
+        )
+        .optional(),
     }),
   ),
   async (c) => {

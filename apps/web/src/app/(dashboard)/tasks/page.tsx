@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
+import { FileAttachments } from '@/components/files/FileAttachments'
 
 interface Project {
   id: string
@@ -25,10 +26,10 @@ interface Task {
 }
 
 const priorityColors: Record<string, string> = {
-  urgent: '#E53935',
-  high: '#FF7043',
+  urgent: '#FF7043',
+  high: '#F59E0B',
   medium: '#5C6BC0',
-  low: '#B0BEC5',
+  low: '#9CA3AF',
 }
 
 const statusLabels: Record<string, string> = {
@@ -47,6 +48,12 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<'active' | 'completed'>('active')
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editStatus, setEditStatus] = useState<Task['status']>('todo')
+  const [editPriority, setEditPriority] = useState<Task['priority']>('medium')
+  const [editDueDate, setEditDueDate] = useState('')
 
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -100,6 +107,26 @@ export default function TasksPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id)
+    setEditTitle(task.title)
+    setEditStatus(task.status)
+    setEditPriority(task.priority)
+    setEditDueDate(task.dueDate ? task.dueDate.slice(0, 10) : '')
+  }
+
+  const saveEditTask = async () => {
+    if (!editingTaskId || !editTitle.trim()) return
+    await api.patch(`/tasks/${editingTaskId}`, {
+      title: editTitle.trim(),
+      status: editStatus,
+      priority: editPriority,
+      dueDate: editDueDate || undefined,
+    })
+    setEditingTaskId(null)
+    void loadAllTasks()
   }
 
   const activeTasks = tasks.filter((t) => t.status !== 'done')
@@ -207,8 +234,75 @@ export default function TasksPage() {
                   </span>
                 </div>
                 {expandedTaskId === task.id && (
-                  <div className="ml-5 mt-2 mb-3 p-3 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border">
+                  <div className="ml-5 mt-2 mb-3 p-3 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border space-y-3">
+                    {editingTaskId === task.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder="Task title"
+                        />
+                        <div className="flex gap-2">
+                          <select
+                            value={editStatus}
+                            onChange={(e) => setEditStatus(e.target.value as Task['status'])}
+                            className="flex-1 rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
+                          >
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="in_review">In Review</option>
+                            <option value="done">Done</option>
+                          </select>
+                          <select
+                            value={editPriority}
+                            onChange={(e) => setEditPriority(e.target.value as Task['priority'])}
+                            className="rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                          </select>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-french-gray dark:text-dark-text-secondary whitespace-nowrap">
+                              Due Date
+                            </label>
+                            <Input
+                              type="date"
+                              value={editDueDate}
+                              onChange={(e) => setEditDueDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <Button onClick={() => void saveEditTask()}>Save Changes</Button>
+                          <Button variant="outline" onClick={() => setEditingTaskId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <Button variant="outline" onClick={() => startEditTask(task)}>
+                          <svg
+                            className="w-4 h-4 mr-1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                          Edit Task
+                        </Button>
+                      </div>
+                    )}
                     <UserAssignmentPicker entityType="task" entityId={task.id} />
+                    <FileAttachments entityType="task" entityId={task.id} />
                   </div>
                 )}
               </div>

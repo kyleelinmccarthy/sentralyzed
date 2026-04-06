@@ -16,6 +16,8 @@ import {
   BarChart3,
   PenTool,
   MessageSquarePlus,
+  Receipt,
+  Package,
   ShieldCheck,
   User,
   Settings,
@@ -39,6 +41,8 @@ const workNavItems: NavItem[] = [
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/goals', label: 'Goals', icon: Target },
+  { href: '/expenses', label: 'Expenses', icon: Receipt },
+  { href: '/assets', label: 'Assets', icon: Package },
 ]
 
 const collaborateNavItems: NavItem[] = [

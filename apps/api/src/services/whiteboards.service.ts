@@ -1,11 +1,12 @@
 import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { whiteboards } from '../db/schema/whiteboards.js'
+import { whereActiveById, softDelete } from './utils/db-helpers.js'
 
 export class WhiteboardsService {
-  async list() {
+  async list(userId: string) {
     return db.query.whiteboards.findMany({
-      where: and(isNull(whiteboards.deletedAt)),
+      where: and(eq(whiteboards.createdBy, userId), isNull(whiteboards.deletedAt)),
       orderBy: (w, { desc }) => [desc(w.updatedAt)],
       columns: {
         id: true,
@@ -20,7 +21,7 @@ export class WhiteboardsService {
 
   async getById(id: string) {
     return db.query.whiteboards.findFirst({
-      where: and(eq(whiteboards.id, id), isNull(whiteboards.deletedAt)),
+      where: whereActiveById(whiteboards.id, id, whiteboards.deletedAt),
     })
   }
 
@@ -47,12 +48,7 @@ export class WhiteboardsService {
   }
 
   async softDelete(id: string) {
-    const [whiteboard] = await db
-      .update(whiteboards)
-      .set({ deletedAt: new Date() })
-      .where(eq(whiteboards.id, id))
-      .returning()
-    return whiteboard
+    return softDelete(whiteboards, whiteboards.id, id)
   }
 }
 

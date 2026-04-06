@@ -1,6 +1,6 @@
 {
   "id": "72e2bd80-7fea-4c67-a05b-fd626fd8e375",
-  "prevId": "f46f3cb2-380c-42c5-9e07-2b6ab072b715",
+  "prevId": "72e2bd80-7fea-4c67-a05b-fd626fd8e375",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -487,7 +487,7 @@
           "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false,
-          "default": "'◈'"
+          "default": "'\u25c8'"
         },
         "created_at": {
           "name": "created_at",

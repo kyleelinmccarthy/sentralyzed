@@ -34,6 +34,9 @@ export interface Expense {
   customLabel: string | null
   receiptUrl: string | null
   projectId: string | null
+  clientId: string | null
+  budgetId: string | null
+  assetId: string | null
   taxDeductible: boolean
   date: string
   vendor: string | null
@@ -54,6 +57,7 @@ export interface Budget {
   periodType: BudgetPeriod
   category: ExpenseCategory | null
   projectId: string | null
+  clientId: string | null
   createdBy: string
   createdAt: string
   updatedAt: string

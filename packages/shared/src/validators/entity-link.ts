@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const sourceTypeSchema = z.enum(['message', 'forum_thread', 'forum_reply'])
-export const targetTypeSchema = z.enum(['project', 'goal', 'task'])
+export const targetTypeSchema = z.enum(['project', 'goal', 'task', 'asset'])
 
 export const createEntityLinkSchema = z.object({
   sourceType: sourceTypeSchema,
