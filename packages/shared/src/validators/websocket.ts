@@ -8,6 +8,10 @@ export const wsMessageSchema = z.object({
     'notification:new',
     'notification:read',
     'whiteboard:update',
+    'whiteboard:join',
+    'whiteboard:leave',
+    'whiteboard:presence',
+    'whiteboard:viewport',
     'presence:online',
     'presence:offline',
   ]),
@@ -30,4 +34,18 @@ export const reactionPayloadSchema = z.object({
   messageId: z.string().uuid(),
   emoji: z.string().min(1).max(50),
   action: z.enum(['add', 'remove']),
+})
+
+export const whiteboardJoinPayloadSchema = z.object({
+  whiteboardId: z.string().uuid(),
+})
+
+export const whiteboardLeavePayloadSchema = z.object({
+  whiteboardId: z.string().uuid(),
+})
+
+export const whiteboardViewportPayloadSchema = z.object({
+  whiteboardId: z.string().uuid(),
+  pan: z.object({ x: z.number(), y: z.number() }),
+  zoom: z.number().min(0.1).max(10),
 })

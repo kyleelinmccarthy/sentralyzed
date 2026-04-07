@@ -70,3 +70,76 @@ export function broadcastToChannel(
     }
   }
 }
+
+// ─── Whiteboard Room Tracking ───
+
+// Map<whiteboardId, Map<connId, { userId, userName }>>
+const whiteboardRooms = new Map<string, Map<string, { userId: string; userName: string }>>()
+
+export function joinWhiteboardRoom(
+  whiteboardId: string,
+  connId: string,
+  userId: string,
+  userName: string,
+) {
+  if (!whiteboardRooms.has(whiteboardId)) {
+    whiteboardRooms.set(whiteboardId, new Map())
+  }
+  whiteboardRooms.get(whiteboardId)!.set(connId, { userId, userName })
+}
+
+export function leaveWhiteboardRoom(whiteboardId: string, connId: string) {
+  const room = whiteboardRooms.get(whiteboardId)
+  if (!room) return
+  room.delete(connId)
+  if (room.size === 0) {
+    whiteboardRooms.delete(whiteboardId)
+  }
+}
+
+export function leaveAllWhiteboardRooms(
+  connId: string,
+): Array<{ whiteboardId: string; userId: string; userName: string }> {
+  const affected: Array<{ whiteboardId: string; userId: string; userName: string }> = []
+  for (const [whiteboardId, room] of whiteboardRooms) {
+    const member = room.get(connId)
+    if (member) {
+      room.delete(connId)
+      affected.push({ whiteboardId, userId: member.userId, userName: member.userName })
+      if (room.size === 0) {
+        whiteboardRooms.delete(whiteboardId)
+      }
+    }
+  }
+  return affected
+}
+
+export function getWhiteboardRoomMembers(
+  whiteboardId: string,
+): Array<{ userId: string; userName: string }> {
+  const room = whiteboardRooms.get(whiteboardId)
+  if (!room) return []
+  const seen = new Map<string, string>()
+  for (const member of room.values()) {
+    if (!seen.has(member.userId)) {
+      seen.set(member.userId, member.userName)
+    }
+  }
+  return Array.from(seen, ([userId, userName]) => ({ userId, userName }))
+}
+
+export function broadcastToWhiteboardRoom(
+  whiteboardId: string,
+  message: string,
+  excludeConnId?: string,
+) {
+  const room = whiteboardRooms.get(whiteboardId)
+  if (!room) return
+  for (const [connId] of room) {
+    if (connId === excludeConnId) continue
+    const conn = connections.get(connId)
+    if (conn && conn.ws.readyState === 1) {
+      conn.ws.send(message)
+    }
+  }
+}

@@ -3,7 +3,14 @@ import type { IncomingMessage } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { parse as parseCookie } from 'cookie'
 import { authService } from '../services/auth.service.js'
-import { addConnection, removeConnection, getAllConnections } from './connections.js'
+import {
+  addConnection,
+  removeConnection,
+  getAllConnections,
+  leaveAllWhiteboardRooms,
+  getWhiteboardRoomMembers,
+  broadcastToWhiteboardRoom,
+} from './connections.js'
 import { handleMessage, setupPubSub } from './handlers.js'
 
 const HEARTBEAT_INTERVAL = 30_000
@@ -71,6 +78,19 @@ export function createWebSocketServer(port: number) {
 
     ws.on('close', () => {
       clearInterval(heartbeat)
+
+      // Clean up whiteboard rooms before removing connection
+      const affectedRooms = leaveAllWhiteboardRooms(connId)
+      for (const { whiteboardId } of affectedRooms) {
+        const users = getWhiteboardRoomMembers(whiteboardId)
+        const presenceMsg = JSON.stringify({
+          type: 'whiteboard:presence',
+          payload: { whiteboardId, users },
+          timestamp: new Date().toISOString(),
+        })
+        broadcastToWhiteboardRoom(whiteboardId, presenceMsg)
+      }
+
       void removeConnection(connId).then(() => {
         // Broadcast offline
         for (const [, conn] of getAllConnections()) {

@@ -39,6 +39,9 @@ import { Toolbar } from './Toolbar'
 interface CanvasProps {
   shapes: Shape[]
   onShapesChange: (shapes: Shape[]) => void
+  viewport?: { pan: { x: number; y: number }; zoom: number }
+  onViewportChange?: (viewport: { pan: { x: number; y: number }; zoom: number }) => void
+  onManualPan?: () => void
 }
 
 // ─── Tool shortcut map ───
@@ -69,7 +72,13 @@ const TOOL_SHORTCUTS: Record<string, ToolType> = {
   w: 'embed',
 }
 
-export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
+export function WhiteboardCanvas({
+  shapes,
+  onShapesChange,
+  viewport,
+  onViewportChange,
+  onManualPan,
+}: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<ToolType>('select')
   const [color, setColor] = useState('#333333')
@@ -126,6 +135,26 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
   } | null>(null)
   const embedInputRef = useRef<HTMLInputElement>(null)
   const [activeEmbedId, setActiveEmbedId] = useState<string | null>(null)
+
+  // ─── Viewport sync (follow mode) ───
+  const isProgrammaticViewport = useRef(false)
+
+  // Accept programmatic viewport override from follow mode
+  useEffect(() => {
+    if (!viewport) return
+    isProgrammaticViewport.current = true
+    setPan(viewport.pan)
+    setZoom(viewport.zoom)
+    // Reset flag after React processes the state update
+    requestAnimationFrame(() => {
+      isProgrammaticViewport.current = false
+    })
+  }, [viewport])
+
+  // Report viewport changes to parent
+  useEffect(() => {
+    onViewportChange?.({ pan, zoom })
+  }, [pan, zoom, onViewportChange])
 
   // ─── Rendering ───
   const render = useCallback(() => {
@@ -578,6 +607,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         y: prev.y + screen.y - panStart.current.y,
       }))
       panStart.current = screen
+      if (!isProgrammaticViewport.current) onManualPan?.()
       return
     }
 
@@ -848,8 +878,9 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         y: my - (my - prev.y) * (newZoom / zoom),
       }))
       setZoom(newZoom)
+      if (!isProgrammaticViewport.current) onManualPan?.()
     },
-    [zoom],
+    [zoom, onManualPan],
   )
 
   useEffect(() => {
@@ -912,6 +943,7 @@ export function WhiteboardCanvas({ shapes, onShapesChange }: CanvasProps) {
         onPanReset={() => {
           setPan({ x: 0, y: 0 })
           setZoom(1)
+          onManualPan?.()
         }}
         hasSelection={selectedIds.size > 0}
         onReorder={handleReorder}

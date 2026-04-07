@@ -5,6 +5,10 @@ export type WsMessageType =
   | 'notification:new'
   | 'notification:read'
   | 'whiteboard:update'
+  | 'whiteboard:join'
+  | 'whiteboard:leave'
+  | 'whiteboard:presence'
+  | 'whiteboard:viewport'
   | 'presence:online'
   | 'presence:offline'
 
@@ -49,4 +53,25 @@ export interface NotificationPayload {
   entityId: string
   metadata: Record<string, unknown>
   createdAt: string
+}
+
+export interface WhiteboardJoinPayload {
+  whiteboardId: string
+}
+
+export interface WhiteboardLeavePayload {
+  whiteboardId: string
+}
+
+export interface WhiteboardPresencePayload {
+  whiteboardId: string
+  users: Array<{ userId: string; userName: string }>
+}
+
+export interface WhiteboardViewportPayload {
+  whiteboardId: string
+  userId: string
+  userName: string
+  pan: { x: number; y: number }
+  zoom: number
 }

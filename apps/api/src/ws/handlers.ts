@@ -1,9 +1,20 @@
 import { redisSub } from '../lib/redis.js'
-import { broadcastToChannel, getConnection, getAllConnections } from './connections.js'
+import {
+  broadcastToChannel,
+  getConnection,
+  getAllConnections,
+  joinWhiteboardRoom,
+  leaveWhiteboardRoom,
+  getWhiteboardRoomMembers,
+  broadcastToWhiteboardRoom,
+} from './connections.js'
 import {
   chatMessagePayloadSchema,
   typingPayloadSchema,
   reactionPayloadSchema,
+  whiteboardJoinPayloadSchema,
+  whiteboardLeavePayloadSchema,
+  whiteboardViewportPayloadSchema,
 } from '@sentral/shared/validators/websocket'
 import { db } from '../db/index.js'
 import { messages, reactions, channelMembers } from '../db/schema/chat.js'
@@ -44,6 +55,15 @@ export async function handleMessage(connId: string, data: string) {
       break
     case 'chat:reaction':
       await handleReaction(conn.userId, parsed.payload)
+      break
+    case 'whiteboard:join':
+      handleWhiteboardJoin(connId, conn.userId, conn.userName, parsed.payload)
+      break
+    case 'whiteboard:leave':
+      handleWhiteboardLeave(connId, parsed.payload)
+      break
+    case 'whiteboard:viewport':
+      handleWhiteboardViewport(connId, conn.userId, conn.userName, parsed.payload)
       break
     case 'presence:ping':
       conn.ws.send(JSON.stringify({ type: 'presence:pong', timestamp: new Date().toISOString() }))
@@ -159,4 +179,52 @@ async function handleReaction(userId: string, payload: unknown) {
     members.map((m) => m.userId),
     broadcastMsg,
   )
+}
+
+// ─── Whiteboard Handlers ───
+
+function broadcastWhiteboardPresence(whiteboardId: string) {
+  const users = getWhiteboardRoomMembers(whiteboardId)
+  const msg = JSON.stringify({
+    type: 'whiteboard:presence',
+    payload: { whiteboardId, users },
+    timestamp: new Date().toISOString(),
+  })
+  broadcastToWhiteboardRoom(whiteboardId, msg)
+}
+
+function handleWhiteboardJoin(connId: string, userId: string, userName: string, payload: unknown) {
+  const parsed = whiteboardJoinPayloadSchema.safeParse(payload)
+  if (!parsed.success) return
+
+  const { whiteboardId } = parsed.data
+  joinWhiteboardRoom(whiteboardId, connId, userId, userName)
+  broadcastWhiteboardPresence(whiteboardId)
+}
+
+function handleWhiteboardLeave(connId: string, payload: unknown) {
+  const parsed = whiteboardLeavePayloadSchema.safeParse(payload)
+  if (!parsed.success) return
+
+  const { whiteboardId } = parsed.data
+  leaveWhiteboardRoom(whiteboardId, connId)
+  broadcastWhiteboardPresence(whiteboardId)
+}
+
+function handleWhiteboardViewport(
+  connId: string,
+  userId: string,
+  userName: string,
+  payload: unknown,
+) {
+  const parsed = whiteboardViewportPayloadSchema.safeParse(payload)
+  if (!parsed.success) return
+
+  const { whiteboardId, pan, zoom } = parsed.data
+  const msg = JSON.stringify({
+    type: 'whiteboard:viewport',
+    payload: { whiteboardId, userId, userName, pan, zoom },
+    timestamp: new Date().toISOString(),
+  })
+  broadcastToWhiteboardRoom(whiteboardId, msg, connId)
 }

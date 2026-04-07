@@ -8,8 +8,28 @@ import type { Shape } from '@/lib/whiteboard/engine'
 import { UserAssignmentPicker } from '@/components/assignments/UserAssignmentPicker'
 import { FileAttachments } from '@/components/files/FileAttachments'
 import { api } from '@/lib/api'
+import { useWhiteboardPresence } from '@/hooks/useWhiteboardPresence'
 
 const SAVE_DEBOUNCE_MS = 1500
+
+const PRESENCE_COLORS = [
+  '#5C6BC0',
+  '#FF7043',
+  '#26A69A',
+  '#3B82F6',
+  '#F59E0B',
+  '#E53935',
+  '#7B1FA2',
+  '#EC407A',
+]
+
+function getUserColor(userId: string): string {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0
+  }
+  return PRESENCE_COLORS[Math.abs(hash) % PRESENCE_COLORS.length]!
+}
 
 interface WhiteboardData {
   id: string
@@ -31,6 +51,20 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
   const realIdRef = useRef<string>(id)
 
   const isLocalId = id.startsWith('local-')
+
+  // ─── Presence & Follow ───
+  const [viewport, setViewport] = useState({ pan: { x: 0, y: 0 }, zoom: 1 })
+  const [followViewport, setFollowViewport] = useState<
+    { pan: { x: number; y: number }; zoom: number } | undefined
+  >(undefined)
+
+  const { presentUsers, followingUserId, toggleFollow, unfollow } = useWhiteboardPresence({
+    whiteboardId: isLocalId ? '' : id,
+    currentViewport: viewport,
+    onViewportSync: (v) => setFollowViewport({ ...v }),
+  })
+
+  const followedUserName = presentUsers.find((u) => u.userId === followingUserId)?.userName
 
   // Load whiteboard data on mount
   useEffect(() => {
@@ -156,6 +190,30 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
           <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[saveStatus]}`}>
             {statusLabel[saveStatus]}
           </span>
+          {/* Presence avatars */}
+          {presentUsers.length > 0 && (
+            <div className="flex items-center gap-1 ml-1">
+              {presentUsers.map((u) => (
+                <button
+                  key={u.userId}
+                  onClick={() => toggleFollow(u.userId)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white transition-all ${
+                    followingUserId === u.userId
+                      ? 'ring-2 ring-indigo ring-offset-1 scale-110'
+                      : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: getUserColor(u.userId) }}
+                  title={
+                    followingUserId === u.userId
+                      ? `Following ${u.userName} (click to unfollow)`
+                      : `Follow ${u.userName}`
+                  }
+                >
+                  {u.userName.charAt(0).toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setShowAssignments(!showAssignments)}
             className="text-xs px-2 py-0.5 rounded-full bg-indigo/10 text-indigo hover:bg-indigo/20 transition-colors"
@@ -173,9 +231,28 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
+      {/* Follow banner */}
+      {followingUserId && followedUserName && (
+        <div className="h-8 border-b border-indigo/20 bg-indigo/5 flex items-center justify-center gap-2 shrink-0">
+          <span className="text-xs text-indigo font-medium">Following {followedUserName}</span>
+          <button
+            onClick={unfollow}
+            className="text-xs text-indigo/60 hover:text-indigo transition-colors"
+          >
+            Stop
+          </button>
+        </div>
+      )}
+
       {/* Canvas */}
       <div className="flex-1">
-        <WhiteboardCanvas shapes={shapes} onShapesChange={handleShapesChange} />
+        <WhiteboardCanvas
+          shapes={shapes}
+          onShapesChange={handleShapesChange}
+          viewport={followViewport}
+          onViewportChange={setViewport}
+          onManualPan={unfollow}
+        />
       </div>
     </div>
   )
