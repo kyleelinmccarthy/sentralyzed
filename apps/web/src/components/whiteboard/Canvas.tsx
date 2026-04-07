@@ -30,7 +30,7 @@ import {
   getFrameChildren,
   renderLaserTrail,
   type LaserPoint,
-  FONT_SIZE_PX,
+  fontSizeToPx,
   FONT_FAMILY_CSS,
   type ReorderDirection,
 } from '@/lib/whiteboard/engine'
@@ -86,9 +86,10 @@ export function WhiteboardCanvas({
   const [fill, setFill] = useState('transparent')
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>('solid')
   const [opacity, setOpacity] = useState(100)
+  const [laserColor, setLaserColor] = useState('#FF4444')
   const [textColor, setTextColor] = useState('#333333')
-  const [fontFamily, setFontFamily] = useState<FontFamily>('sans')
-  const [fontSize, setFontSize] = useState<FontSize>('M')
+  const [fontFamily, setFontFamily] = useState<FontFamily>('inter')
+  const [fontSize, setFontSize] = useState<FontSize>(16)
   const [textAlign, setTextAlign] = useState<TextAlign>('left')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDrawing, setIsDrawing] = useState(false)
@@ -239,7 +240,7 @@ export function WhiteboardCanvas({
 
     // Laser trail
     if (laserPoints.current.length > 0) {
-      laserPoints.current = renderLaserTrail(ctx, laserPoints.current)
+      laserPoints.current = renderLaserTrail(ctx, laserPoints.current, laserColor)
       if (laserPoints.current.length > 0) {
         cancelAnimationFrame(laserAnimFrame.current)
         laserAnimFrame.current = requestAnimationFrame(render)
@@ -247,7 +248,7 @@ export function WhiteboardCanvas({
     }
 
     ctx.restore()
-  }, [shapes, selectedIds, pan, zoom, selectionBox])
+  }, [shapes, selectedIds, pan, zoom, selectionBox, laserColor])
 
   // ─── Canvas sizing ───
   useEffect(() => {
@@ -334,6 +335,20 @@ export function WhiteboardCanvas({
     [shapes, color, strokeWidth, opacity, strokeStyle, onShapesChange, pushUndo, render],
   )
 
+  // ─── Direct image insert (from toolbar button) ───
+  const handleImageInsert = useCallback(() => {
+    // Place image at center of current viewport
+    const canvas = canvasRef.current
+    if (canvas) {
+      const centerX = (canvas.width / 2 - pan.x) / zoom
+      const centerY = (canvas.height / 2 - pan.y) / zoom
+      pendingImagePos.current = { x: centerX, y: centerY }
+    } else {
+      pendingImagePos.current = { x: 100, y: 100 }
+    }
+    fileInputRef.current?.click()
+  }, [pan, zoom])
+
   // ─── Text input commit ───
   const commitTextInput = useCallback(() => {
     if (!textInput) return
@@ -350,7 +365,7 @@ export function WhiteboardCanvas({
         pushUndo()
         const canvas = canvasRef.current
         const ctx = canvas?.getContext('2d')
-        let measured = { width: value.length * 10, height: FONT_SIZE_PX[fontSize] * 1.3 }
+        let measured = { width: value.length * 10, height: fontSizeToPx(fontSize) * 1.3 }
         if (ctx) {
           measured = measureText(ctx, value, fontFamily, fontSize)
         }
@@ -383,7 +398,7 @@ export function WhiteboardCanvas({
     pushUndo()
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    let measured = { width: value.length * 10, height: FONT_SIZE_PX[fontSize] * 1.3 }
+    let measured = { width: value.length * 10, height: fontSizeToPx(fontSize) * 1.3 }
     if (ctx) {
       measured = measureText(ctx, value, fontFamily, fontSize)
     }
@@ -437,8 +452,8 @@ export function WhiteboardCanvas({
 
   // ─── Double-click to edit text ───
   const startEditingText = (shape: Shape, screenX: number, screenY: number) => {
-    setFontFamily(shape.fontFamily ?? 'sans')
-    setFontSize(shape.fontSize ?? 'M')
+    setFontFamily(shape.fontFamily ?? 'inter')
+    setFontSize(typeof shape.fontSize === 'number' ? shape.fontSize : 16)
     setTextAlign(shape.textAlign ?? 'left')
     setTextColor(shape.color)
 
@@ -551,12 +566,6 @@ export function WhiteboardCanvas({
           return next
         })
       }
-      return
-    }
-
-    if (tool === 'image') {
-      pendingImagePos.current = pos
-      fileInputRef.current?.click()
       return
     }
 
@@ -783,7 +792,11 @@ export function WhiteboardCanvas({
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
         const mapped = TOOL_SHORTCUTS[e.key]
         if (mapped) {
-          setTool(mapped)
+          if (mapped === 'image') {
+            handleImageInsert()
+          } else {
+            setTool(mapped)
+          }
           return
         }
       }
@@ -899,17 +912,92 @@ export function WhiteboardCanvas({
     [shapes, selectedIds, pushUndo, onShapesChange],
   )
 
+  // ─── Selected text shape support ───
+  const selectedTextShapes = shapes.filter((s) => selectedIds.has(s.id) && s.type === 'text')
+  const hasTextSelection = selectedTextShapes.length > 0
+
+  // Sync toolbar state from selected text shape
+  useEffect(() => {
+    if (selectedTextShapes.length === 1) {
+      const s = selectedTextShapes[0]!
+      setTextColor(s.color)
+      setFontFamily((s.fontFamily as FontFamily) ?? 'inter')
+      setFontSize(typeof s.fontSize === 'number' ? s.fontSize : 16)
+      setTextAlign(s.textAlign ?? 'left')
+    }
+  }, [selectedIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update selected text shapes when toolbar properties change
+  const updateSelectedText = useCallback(
+    (updates: Partial<Shape>) => {
+      if (selectedTextShapes.length === 0) return
+      pushUndo()
+      const ctx = canvasRef.current?.getContext('2d')
+      onShapesChange(
+        shapes.map((s) => {
+          if (!selectedIds.has(s.id) || s.type !== 'text') return s
+          const updated = { ...s, ...updates }
+          // Re-measure if font properties changed
+          if (ctx && s.text && ('fontFamily' in updates || 'fontSize' in updates)) {
+            const measured = measureText(
+              ctx,
+              s.text,
+              updated.fontFamily as FontFamily,
+              updated.fontSize,
+            )
+            updated.width = measured.width
+            updated.height = measured.height
+          }
+          return updated
+        }),
+      )
+    },
+    [selectedTextShapes.length, shapes, selectedIds, pushUndo, onShapesChange],
+  )
+
+  const handleTextColorChange = useCallback(
+    (c: string) => {
+      setTextColor(c)
+      if (hasTextSelection) updateSelectedText({ color: c })
+    },
+    [hasTextSelection, updateSelectedText],
+  )
+
+  const handleFontFamilyChange = useCallback(
+    (f: FontFamily) => {
+      setFontFamily(f)
+      if (hasTextSelection) updateSelectedText({ fontFamily: f })
+    },
+    [hasTextSelection, updateSelectedText],
+  )
+
+  const handleFontSizeChange = useCallback(
+    (s: FontSize) => {
+      setFontSize(s)
+      if (hasTextSelection) updateSelectedText({ fontSize: s })
+    },
+    [hasTextSelection, updateSelectedText],
+  )
+
+  const handleTextAlignChange = useCallback(
+    (a: TextAlign) => {
+      setTextAlign(a)
+      if (hasTextSelection) updateSelectedText({ textAlign: a })
+    },
+    [hasTextSelection, updateSelectedText],
+  )
+
   const getCursor = () => {
     if (tool === 'hand') return 'cursor-grab'
     if (tool === 'text') return 'cursor-text'
-    if (tool === 'eraser' || tool === 'image') return 'cursor-pointer'
+    if (tool === 'eraser') return 'cursor-pointer'
     if (tool === 'embed') return 'cursor-cell'
     if (tool !== 'select') return 'cursor-crosshair'
     return 'cursor-default'
   }
 
-  const textInputFontSize = FONT_SIZE_PX[fontSize]
-  const textInputFontFamily = FONT_FAMILY_CSS[fontFamily]
+  const textInputFontSize = fontSizeToPx(fontSize)
+  const textInputFontFamily = FONT_FAMILY_CSS[fontFamily] ?? FONT_FAMILY_CSS.inter
 
   return (
     <div className="relative w-full h-full">
@@ -924,16 +1012,18 @@ export function WhiteboardCanvas({
         fontFamily={fontFamily}
         fontSize={fontSize}
         textAlign={textAlign}
+        laserColor={laserColor}
         onToolChange={setTool}
         onColorChange={setColor}
         onStrokeWidthChange={setStrokeWidth}
         onFillChange={setFill}
         onStrokeStyleChange={setStrokeStyle}
         onOpacityChange={setOpacity}
-        onTextColorChange={setTextColor}
-        onFontFamilyChange={setFontFamily}
-        onFontSizeChange={setFontSize}
-        onTextAlignChange={setTextAlign}
+        onTextColorChange={handleTextColorChange}
+        onFontFamilyChange={handleFontFamilyChange}
+        onFontSizeChange={handleFontSizeChange}
+        onTextAlignChange={handleTextAlignChange}
+        onLaserColorChange={setLaserColor}
         onUndo={undo}
         onRedo={redo}
         canUndo={undoStack.length > 0}
@@ -946,7 +1036,9 @@ export function WhiteboardCanvas({
           onManualPan?.()
         }}
         hasSelection={selectedIds.size > 0}
+        hasTextSelection={hasTextSelection}
         onReorder={handleReorder}
+        onImageInsert={handleImageInsert}
         selectedFrameLabel={
           selectedIds.size === 1
             ? shapes.find((s) => s.id === [...selectedIds][0] && s.type === 'frame')?.label

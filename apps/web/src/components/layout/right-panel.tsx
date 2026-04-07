@@ -108,10 +108,10 @@ export function RightPanel() {
       </h2>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <StatCard label="Planned Today" value={0} color="#5C6BC0" />
+        <StatCard label="Planned Today" value={0} color="#3B82F6" />
         <StatCard label="Finished Yesterday" value={0} color="#26A69A" />
-        <StatCard label="Due This Week" value={0} color="#F59E0B" />
-        <StatCard label="Overdue" value={0} color="#FF7043" />
+        <StatCard label="Due This Week" value={0} color="#64748B" />
+        <StatCard label="Overdue" value={0} color="#5C6BC0" />
       </div>
 
       <MiniCalendar />

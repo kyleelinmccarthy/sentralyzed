@@ -5,7 +5,10 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 
 export function rateLimit(maxRequests: number, windowMs: number) {
   return async (c: Context, next: Next) => {
-    const key = c.req.header('x-forwarded-for') || 'unknown'
+    const key =
+      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
+      c.req.header('x-real-ip') ||
+      'unknown'
     const now = Date.now()
     const entry = rateLimitStore.get(key)
 

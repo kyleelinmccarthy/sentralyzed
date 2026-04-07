@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { api } from '@/lib/api'
+import { CheckSquare, CalendarDays, Target, MessageSquare, Inbox } from 'lucide-react'
 import type {
   MyItemsResponse,
   DashboardTask,
@@ -60,11 +62,38 @@ type TodoItem =
   | { type: 'goal'; sortDate: number; data: DashboardGoal }
   | { type: 'feedback'; sortDate: number; data: DashboardFeedback }
 
+const typeGradients: Record<string, string> = {
+  task: 'linear-gradient(135deg, #3B82F6, #1E3A8A)',
+  event: 'linear-gradient(135deg, #26A69A, #1A7A70)',
+  goal: 'linear-gradient(135deg, #64748B, #334155)',
+  feedback: 'linear-gradient(135deg, #5C6BC0, #3949AB)',
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  const { settings, fetchSettings } = useSettingsStore()
   const [items, setItems] = useState<MyItemsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<FilterTab>('all')
+
+  const widgets = useMemo(
+    () =>
+      new Set(
+        settings?.dashboardWidgets ?? [
+          'tasks',
+          'events',
+          'goals',
+          'feedbackItems',
+          'chatNotifications',
+          'assignments',
+        ],
+      ),
+    [settings?.dashboardWidgets],
+  )
+
+  useEffect(() => {
+    void fetchSettings()
+  }, [fetchSettings])
 
   useEffect(() => {
     const loadItems = async () => {
@@ -81,36 +110,46 @@ export default function DashboardPage() {
   const sortedItems = useMemo<TodoItem[]>(() => {
     if (!items) return []
     const merged: TodoItem[] = [
-      ...items.tasks.map((t) => ({
-        type: 'task' as const,
-        sortDate: t.dueDate ? new Date(t.dueDate).getTime() : Infinity,
-        data: t,
-      })),
-      ...items.events.map((e) => ({
-        type: 'event' as const,
-        sortDate: new Date(e.startTime).getTime(),
-        data: e,
-      })),
-      ...items.goals.map((g) => ({
-        type: 'goal' as const,
-        sortDate: g.targetDate ? new Date(g.targetDate).getTime() : Infinity,
-        data: g,
-      })),
-      ...items.feedbackItems.map((f) => ({
-        type: 'feedback' as const,
-        sortDate: Infinity,
-        data: f,
-      })),
+      ...(widgets.has('tasks')
+        ? items.tasks.map((t) => ({
+            type: 'task' as const,
+            sortDate: t.dueDate ? new Date(t.dueDate).getTime() : Infinity,
+            data: t,
+          }))
+        : []),
+      ...(widgets.has('events')
+        ? items.events.map((e) => ({
+            type: 'event' as const,
+            sortDate: new Date(e.startTime).getTime(),
+            data: e,
+          }))
+        : []),
+      ...(widgets.has('goals')
+        ? items.goals.map((g) => ({
+            type: 'goal' as const,
+            sortDate: g.targetDate ? new Date(g.targetDate).getTime() : Infinity,
+            data: g,
+          }))
+        : []),
+      ...(widgets.has('feedbackItems')
+        ? items.feedbackItems.map((f) => ({
+            type: 'feedback' as const,
+            sortDate: Infinity,
+            data: f,
+          }))
+        : []),
     ]
     return merged.sort((a, b) => a.sortDate - b.sortDate)
-  }, [items])
+  }, [items, widgets])
 
   const totalCount =
-    (items?.tasks.length ?? 0) +
-    (items?.events.length ?? 0) +
-    (items?.goals.length ?? 0) +
-    (items?.feedbackItems.length ?? 0)
-  const isEmpty = items && totalCount === 0 && (items.chatNotifications?.length ?? 0) === 0
+    (widgets.has('tasks') ? (items?.tasks.length ?? 0) : 0) +
+    (widgets.has('events') ? (items?.events.length ?? 0) : 0) +
+    (widgets.has('goals') ? (items?.goals.length ?? 0) : 0) +
+    (widgets.has('feedbackItems') ? (items?.feedbackItems.length ?? 0) : 0)
+  const showChat = widgets.has('chatNotifications')
+  const isEmpty =
+    items && totalCount === 0 && (!showChat || (items.chatNotifications?.length ?? 0) === 0)
 
   const displayItems = useMemo(() => {
     if (filter === 'tasks') return sortedItems.filter((i) => i.type === 'task')
@@ -120,15 +159,59 @@ export default function DashboardPage() {
     return sortedItems
   }, [sortedItems, filter])
 
-  const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: totalCount },
-    { key: 'tasks', label: 'Tasks', count: items?.tasks.length ?? 0 },
-    { key: 'events', label: 'Events', count: items?.events.length ?? 0 },
-    { key: 'goals', label: 'Goals', count: items?.goals.length ?? 0 },
-    { key: 'feedback', label: 'Feedback', count: items?.feedbackItems.length ?? 0 },
+  const allTabs: { key: FilterTab; widgetKey: string; label: string; count: number }[] = [
+    { key: 'all', widgetKey: 'all', label: 'All', count: totalCount },
+    { key: 'tasks', widgetKey: 'tasks', label: 'Tasks', count: items?.tasks.length ?? 0 },
+    { key: 'events', widgetKey: 'events', label: 'Events', count: items?.events.length ?? 0 },
+    { key: 'goals', widgetKey: 'goals', label: 'Goals', count: items?.goals.length ?? 0 },
+    {
+      key: 'feedback',
+      widgetKey: 'feedbackItems',
+      label: 'Feedback',
+      count: items?.feedbackItems.length ?? 0,
+    },
   ]
+  const tabs = allTabs.filter((t) => t.widgetKey === 'all' || widgets.has(t.widgetKey))
 
-  const totalUnread = items?.chatNotifications?.reduce((sum, n) => sum + n.unreadCount, 0) ?? 0
+  const totalUnread = showChat
+    ? (items?.chatNotifications?.reduce((sum, n) => sum + n.unreadCount, 0) ?? 0)
+    : 0
+
+  const allQuickLinks = [
+    {
+      key: 'tasks',
+      label: 'Tasks',
+      desc: `${items?.tasks.length ?? 0} active`,
+      gradient: typeGradients.task,
+      icon: CheckSquare,
+      href: '/tasks',
+    },
+    {
+      key: 'events',
+      label: 'Events',
+      desc: `${items?.events.length ?? 0} upcoming`,
+      gradient: typeGradients.event,
+      icon: CalendarDays,
+      href: '/calendar',
+    },
+    {
+      key: 'goals',
+      label: 'Goals',
+      desc: `${items?.goals.length ?? 0} in progress`,
+      gradient: typeGradients.goal,
+      icon: Target,
+      href: '/goals',
+    },
+    {
+      key: 'feedbackItems',
+      label: 'Feedback',
+      desc: `${items?.feedbackItems.length ?? 0} open`,
+      gradient: typeGradients.feedback,
+      icon: MessageSquare,
+      href: '/feedback',
+    },
+  ]
+  const quickLinks = allQuickLinks.filter((l) => widgets.has(l.key))
 
   return (
     <div>
@@ -136,8 +219,29 @@ export default function DashboardPage() {
         Welcome back, {user?.name?.split(' ')[0] || 'there'}
       </h1>
 
+      {/* Quick link cards */}
+      {quickLinks.length > 0 && (
+        <div
+          className={`grid grid-cols-2 ${quickLinks.length >= 4 ? 'lg:grid-cols-4' : quickLinks.length === 3 ? 'lg:grid-cols-3' : ''} gap-3 mb-6`}
+        >
+          {quickLinks.map((link) => (
+            <Card
+              key={link.label}
+              gradient={link.gradient}
+              className="p-4 text-white cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <link.icon size={20} strokeWidth={1.5} />
+              </div>
+              <h3 className="text-sm font-semibold">{link.label}</h3>
+              <p className="text-xs mt-0.5 opacity-80">{link.desc}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Chat notifications banner */}
-      {totalUnread > 0 && (
+      {showChat && totalUnread > 0 && (
         <Card className="p-4 mb-4 border-indigo/30 bg-indigo/5">
           <div className="flex items-center gap-2">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo text-white text-[11px] font-bold">
@@ -163,18 +267,19 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-jet dark:text-dark-text mb-4">My To-Do List</h2>
+      {/* To-Do List */}
+      <div>
+        <h2 className="text-lg font-semibold text-jet dark:text-dark-text mb-3">My To-Do List</h2>
 
-        <div className="flex gap-4 mb-4 overflow-x-auto">
+        <div className="flex gap-1 mb-4 bg-light-surface dark:bg-dark-card rounded-lg p-1 border border-light-border dark:border-dark-border w-fit">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`text-sm font-medium pb-1 whitespace-nowrap ${
+              className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
                 filter === tab.key
-                  ? 'text-indigo border-b-2 border-indigo'
-                  : 'text-french-gray dark:text-dark-text-secondary'
+                  ? 'bg-indigo text-white shadow-sm'
+                  : 'text-french-gray dark:text-dark-text-secondary hover:text-jet dark:hover:text-dark-text'
               }`}
             >
               {tab.label} ({tab.count})
@@ -183,140 +288,146 @@ export default function DashboardPage() {
         </div>
 
         {isLoading && (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo" />
             <span className="ml-3 text-sm text-french-gray">Loading your items...</span>
           </div>
         )}
 
         {!isLoading && isEmpty && (
-          <p className="text-sm text-french-gray dark:text-dark-text-secondary py-4">
-            No items assigned to you. Tasks, events, goals, and feedback will appear here.
-          </p>
+          <Card className="p-8 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-full bg-indigo/10 flex items-center justify-center mb-3">
+              <Inbox size={24} className="text-indigo" strokeWidth={1.5} />
+            </div>
+            <p className="text-sm font-medium text-jet dark:text-dark-text mb-1">
+              You&apos;re all caught up
+            </p>
+            <p className="text-xs text-french-gray dark:text-dark-text-secondary max-w-[280px]">
+              No items assigned to you. Tasks, events, goals, and feedback will appear here.
+            </p>
+          </Card>
         )}
 
         {!isLoading && !isEmpty && displayItems.length === 0 && (
-          <p className="text-sm text-french-gray dark:text-dark-text-secondary py-4">
-            No {filter} to show.
-          </p>
+          <Card className="p-6 text-center">
+            <p className="text-sm text-french-gray dark:text-dark-text-secondary">
+              No {filter} to show.
+            </p>
+          </Card>
         )}
 
-        {!isLoading &&
-          displayItems.map((item) => (
-            <div
-              key={`${item.type}-${item.data.id}`}
-              className="flex items-center gap-3 p-3 rounded-lg border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover transition-colors mb-2"
-            >
-              {item.type === 'task' && (
-                <>
-                  <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{
-                      backgroundColor: priorityColors[(item.data as DashboardTask).priority],
-                    }}
-                  />
+        {!isLoading && displayItems.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {displayItems.map((item) => (
+              <Card
+                key={`${item.type}-${item.data.id}`}
+                className="relative overflow-hidden p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                {/* Gradient accent bar */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ background: typeGradients[item.type] }}
+                />
+
+                <div className="flex items-start justify-between gap-2 mt-1">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-jet dark:text-dark-text truncate">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide text-white"
+                        style={{ background: typeGradients[item.type] }}
+                      >
+                        {item.type}
+                      </span>
+                      {item.type === 'task' && (
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{
+                            backgroundColor: priorityColors[(item.data as DashboardTask).priority],
+                          }}
+                          title={(item.data as DashboardTask).priority + ' priority'}
+                        />
+                      )}
+                      {item.type === 'feedback' && (
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{
+                            backgroundColor:
+                              priorityColors[(item.data as DashboardFeedback).priority],
+                          }}
+                          title={(item.data as DashboardFeedback).priority + ' priority'}
+                        />
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-jet dark:text-dark-text truncate">
                       {item.data.title}
-                    </p>
-                    <p className="text-xs text-french-gray dark:text-dark-text-secondary">
-                      {formatDate((item.data as DashboardTask).dueDate)}
                     </p>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo/10 text-indigo">
-                    {statusLabels[(item.data as DashboardTask).status] ||
-                      (item.data as DashboardTask).status}
-                  </span>
-                  <span className="text-[10px] uppercase font-medium text-french-gray dark:text-dark-text-secondary">
-                    Task
-                  </span>
-                </>
-              )}
 
-              {item.type === 'event' && (
-                <>
-                  <span className="w-2 h-2 rounded-full flex-shrink-0 bg-teal" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-jet dark:text-dark-text truncate">
-                      {item.data.title}
-                    </p>
-                    <p className="text-xs text-french-gray dark:text-dark-text-secondary">
+                  {/* Status badge */}
+                  {item.type === 'task' && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo/10 text-indigo whitespace-nowrap">
+                      {statusLabels[(item.data as DashboardTask).status] ||
+                        (item.data as DashboardTask).status}
+                    </span>
+                  )}
+                  {item.type === 'event' && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal/10 text-teal whitespace-nowrap">
+                      {(item.data as DashboardEvent).rsvpStatus}
+                    </span>
+                  )}
+                  {item.type === 'goal' && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-gray/10 text-slate-gray whitespace-nowrap">
+                      {statusLabels[(item.data as DashboardGoal).status] ||
+                        (item.data as DashboardGoal).status}
+                    </span>
+                  )}
+                  {item.type === 'feedback' && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo/10 text-indigo whitespace-nowrap">
+                      {statusLabels[(item.data as DashboardFeedback).status] ||
+                        (item.data as DashboardFeedback).status}
+                    </span>
+                  )}
+                </div>
+
+                {/* Meta info row */}
+                <div className="flex items-center gap-3 mt-2 text-xs text-french-gray dark:text-dark-text-secondary">
+                  {item.type === 'task' && (
+                    <span>{formatDate((item.data as DashboardTask).dueDate)}</span>
+                  )}
+                  {item.type === 'event' && (
+                    <span>
                       {(item.data as DashboardEvent).allDay
                         ? formatDate((item.data as DashboardEvent).startTime)
                         : formatTime((item.data as DashboardEvent).startTime)}
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal/10 text-teal">
-                    {(item.data as DashboardEvent).rsvpStatus}
-                  </span>
-                  <span className="text-[10px] uppercase font-medium text-french-gray dark:text-dark-text-secondary">
-                    Event
-                  </span>
-                </>
-              )}
-
-              {item.type === 'goal' && (
-                <>
-                  <span className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-jet dark:text-dark-text truncate">
-                      {item.data.title}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-french-gray dark:text-dark-text-secondary">
-                        {formatDate((item.data as DashboardGoal).targetDate)}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-dark-border overflow-hidden">
+                    </span>
+                  )}
+                  {item.type === 'goal' && (
+                    <>
+                      <span>{formatDate((item.data as DashboardGoal).targetDate)}</span>
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <div className="flex-1 max-w-[100px] h-1.5 rounded-full bg-gray-200 dark:bg-dark-border overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-amber-500"
-                            style={{ width: `${(item.data as DashboardGoal).progressPercentage}%` }}
+                            className="h-full rounded-full bg-slate-gray transition-all"
+                            style={{
+                              width: `${(item.data as DashboardGoal).progressPercentage}%`,
+                            }}
                           />
                         </div>
-                        <span className="text-[10px] text-french-gray dark:text-dark-text-secondary">
+                        <span className="text-[11px] font-medium">
                           {(item.data as DashboardGoal).progressPercentage}%
                         </span>
                       </div>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600">
-                    {statusLabels[(item.data as DashboardGoal).status] ||
-                      (item.data as DashboardGoal).status}
-                  </span>
-                  <span className="text-[10px] uppercase font-medium text-french-gray dark:text-dark-text-secondary">
-                    Goal
-                  </span>
-                </>
-              )}
-
-              {item.type === 'feedback' && (
-                <>
-                  <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{
-                      backgroundColor: priorityColors[(item.data as DashboardFeedback).priority],
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-jet dark:text-dark-text truncate">
-                      {item.data.title}
-                    </p>
-                    <p className="text-xs text-french-gray dark:text-dark-text-secondary">
-                      {feedbackCategoryLabels[(item.data as DashboardFeedback).category]}
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-600">
-                    {statusLabels[(item.data as DashboardFeedback).status] ||
-                      (item.data as DashboardFeedback).status}
-                  </span>
-                  <span className="text-[10px] uppercase font-medium text-french-gray dark:text-dark-text-secondary">
-                    Feedback
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
-      </Card>
+                    </>
+                  )}
+                  {item.type === 'feedback' && (
+                    <span>{feedbackCategoryLabels[(item.data as DashboardFeedback).category]}</span>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

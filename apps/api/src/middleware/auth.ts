@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { authService } from '../services/auth.service.js'
-import type { Role } from '@sentral/shared/types/user'
+import type { Role, AuthProvider } from '@sentral/shared/types/user'
 
 const SESSION_COOKIE = 'sentral_session'
 
@@ -11,6 +11,7 @@ export interface AuthUser {
   name: string
   role: Role
   avatarUrl: string | null
+  authProvider: AuthProvider
 }
 
 export async function authMiddleware(c: Context, next: Next) {
@@ -31,6 +32,7 @@ export async function authMiddleware(c: Context, next: Next) {
     name: result.user.name,
     role: result.user.role,
     avatarUrl: result.user.avatarUrl,
+    authProvider: result.user.authProvider,
   } satisfies AuthUser)
 
   await next()

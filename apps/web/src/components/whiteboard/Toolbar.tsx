@@ -8,6 +8,7 @@ import type {
   TextAlign,
   ReorderDirection,
 } from '@/lib/whiteboard/engine'
+import { FONT_FAMILY_LABELS, FONT_FAMILY_CSS, FONT_SIZES } from '@/lib/whiteboard/engine'
 
 interface ToolbarProps {
   activeTool: ToolType
@@ -20,6 +21,7 @@ interface ToolbarProps {
   fontFamily: FontFamily
   fontSize: FontSize
   textAlign: TextAlign
+  laserColor: string
   onToolChange: (tool: ToolType) => void
   onColorChange: (color: string) => void
   onStrokeWidthChange: (width: number) => void
@@ -30,6 +32,7 @@ interface ToolbarProps {
   onFontFamilyChange: (family: FontFamily) => void
   onFontSizeChange: (size: FontSize) => void
   onTextAlignChange: (align: TextAlign) => void
+  onLaserColorChange: (color: string) => void
   onUndo: () => void
   onRedo: () => void
   canUndo: boolean
@@ -38,10 +41,54 @@ interface ToolbarProps {
   onZoomChange: (zoom: number) => void
   onPanReset: () => void
   hasSelection: boolean
+  hasTextSelection: boolean
   onReorder: (direction: ReorderDirection) => void
   selectedFrameLabel?: string
   onFrameLabelChange: (label: string) => void
+  onImageInsert: () => void
 }
+
+// ─── SVG Icons ───
+
+const SelectIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" stroke="none">
+    <path d="M3 1 L3 14 L6.5 10.5 L9.5 15 L11.5 14 L8.5 9 L13 9 Z" />
+  </svg>
+)
+
+const HandIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 1.5v8M5.5 4v6.5M3 6v4.5a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V4.5" />
+    <path d="M10.5 3v7.5" />
+    <path d="M13 5.5v5" />
+  </svg>
+)
+
+const EraserIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M11 2 L14 5 L7 12 L2 12 L2 9 Z" />
+    <line x1="2" y1="14" x2="14" y2="14" />
+    <line x1="8.5" y1="4.5" x2="11.5" y2="7.5" />
+  </svg>
+)
 
 const ImageIcon = () => (
   <svg
@@ -60,21 +107,40 @@ const ImageIcon = () => (
   </svg>
 )
 
-const tools: { type: ToolType; label: string; icon: React.ReactNode; shortcut: string }[] = [
-  { type: 'select', label: 'Select (Alt+drag: lasso)', icon: '↖', shortcut: 'V' },
-  { type: 'hand', label: 'Hand (Pan)', icon: '✋', shortcut: 'H' },
+const LaserIcon = ({ color }: { color: string }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="8" cy="8" r="3" fill={color} opacity="0.8" />
+    <circle cx="8" cy="8" r="5" stroke={color} opacity="0.4" />
+    <circle cx="8" cy="8" r="7" stroke={color} opacity="0.2" />
+  </svg>
+)
+
+// ─── Tool definitions split into groups ───
+
+const navigationTools: {
+  type: ToolType
+  label: string
+  icon: React.ReactNode
+  shortcut: string
+}[] = [
+  { type: 'select', label: 'Select (Alt+drag: lasso)', icon: <SelectIcon />, shortcut: 'V' },
+  { type: 'hand', label: 'Hand (Pan)', icon: <HandIcon />, shortcut: 'H' },
+]
+
+const shapeTools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
   { type: 'rectangle', label: 'Rectangle', icon: '▭', shortcut: 'R' },
   { type: 'diamond', label: 'Diamond', icon: '◇', shortcut: 'D' },
   { type: 'ellipse', label: 'Ellipse', icon: '◯', shortcut: 'O' },
   { type: 'line', label: 'Line', icon: '╱', shortcut: 'L' },
   { type: 'arrow', label: 'Arrow', icon: '→', shortcut: 'A' },
-  { type: 'freehand', label: 'Draw', icon: '✎', shortcut: 'P' },
-  { type: 'text', label: 'Text', icon: 'T', shortcut: 'T' },
-  { type: 'image', label: 'Image', icon: <ImageIcon />, shortcut: 'I' },
-  { type: 'frame', label: 'Frame', icon: '⬚', shortcut: 'F' },
-  { type: 'embed', label: 'Embed', icon: '🔗', shortcut: 'W' },
-  { type: 'laser', label: 'Laser', icon: '🔴', shortcut: 'K' },
-  { type: 'eraser', label: 'Eraser', icon: '⌫', shortcut: 'E' },
 ]
 
 const paletteColors = [
@@ -90,25 +156,80 @@ const paletteColors = [
   '#FFFFFF',
 ]
 
+const laserColors = [
+  { color: '#FF4444', label: 'Red' },
+  { color: '#FF8800', label: 'Orange' },
+  { color: '#FFDD00', label: 'Yellow' },
+  { color: '#44FF44', label: 'Green' },
+  { color: '#4488FF', label: 'Blue' },
+  { color: '#AA44FF', label: 'Purple' },
+  { color: '#FF44FF', label: 'Pink' },
+  { color: '#FFFFFF', label: 'White' },
+]
+
 const strokeStyles: { value: StrokeStyle; label: string; preview: string }[] = [
   { value: 'solid', label: 'Solid', preview: '—' },
   { value: 'dashed', label: 'Dashed', preview: '- -' },
   { value: 'dotted', label: 'Dotted', preview: '···' },
 ]
 
-const fontFamilies: { value: FontFamily; label: string; icon: string }[] = [
-  { value: 'hand', label: 'Handwritten', icon: '✏' },
-  { value: 'serif', label: 'Serif', icon: 'A' },
-  { value: 'mono', label: 'Code', icon: '</>' },
-  { value: 'sans', label: 'Sans-serif', icon: 'A' },
-]
+const fontFamilyOptions = Object.keys(FONT_FAMILY_LABELS) as FontFamily[]
 
-const fontSizes: FontSize[] = ['S', 'M', 'L', 'XL']
+const AlignLeftIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+  >
+    <line x1="1" y1="2" x2="13" y2="2" />
+    <line x1="1" y1="5.5" x2="9" y2="5.5" />
+    <line x1="1" y1="9" x2="11" y2="9" />
+    <line x1="1" y1="12.5" x2="7" y2="12.5" />
+  </svg>
+)
 
-const textAligns: { value: TextAlign; icon: string; label: string }[] = [
-  { value: 'left', icon: '≡', label: 'Align left' },
-  { value: 'center', icon: '≡', label: 'Align center' },
-  { value: 'right', icon: '≡', label: 'Align right' },
+const AlignCenterIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+  >
+    <line x1="1" y1="2" x2="13" y2="2" />
+    <line x1="3" y1="5.5" x2="11" y2="5.5" />
+    <line x1="2" y1="9" x2="12" y2="9" />
+    <line x1="4" y1="12.5" x2="10" y2="12.5" />
+  </svg>
+)
+
+const AlignRightIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+  >
+    <line x1="1" y1="2" x2="13" y2="2" />
+    <line x1="5" y1="5.5" x2="13" y2="5.5" />
+    <line x1="3" y1="9" x2="13" y2="9" />
+    <line x1="7" y1="12.5" x2="13" y2="12.5" />
+  </svg>
+)
+
+const textAligns: { value: TextAlign; icon: React.ReactNode; label: string }[] = [
+  { value: 'left', icon: <AlignLeftIcon />, label: 'Align left' },
+  { value: 'center', icon: <AlignCenterIcon />, label: 'Align center' },
+  { value: 'right', icon: <AlignRightIcon />, label: 'Align right' },
 ]
 
 function Divider() {
@@ -199,24 +320,61 @@ function ToggleButton({
   )
 }
 
+function ToolButton({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors
+        ${active ? 'bg-indigo text-white' : 'hover:bg-gray-100 text-jet'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function Toolbar(props: ToolbarProps) {
   const isTextTool = props.activeTool === 'text'
+  const isLaserTool = props.activeTool === 'laser'
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
-      {/* Main toolbar row */}
+      {/* Row 1: Navigation + Shapes + Stroke properties + Undo/Redo + Zoom */}
       <div className="bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2">
-        {/* Tools */}
-        {tools.map((tool) => (
-          <button
+        {/* Navigation tools: Select, Hand */}
+        {navigationTools.map((tool) => (
+          <ToolButton
             key={tool.type}
+            active={props.activeTool === tool.type}
             onClick={() => props.onToolChange(tool.type)}
             title={`${tool.label} (${tool.shortcut})`}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors
-              ${props.activeTool === tool.type ? 'bg-indigo text-white' : 'hover:bg-gray-100 text-jet'}`}
           >
             {tool.icon}
-          </button>
+          </ToolButton>
+        ))}
+
+        <Divider />
+
+        {/* Shape tools */}
+        {shapeTools.map((tool) => (
+          <ToolButton
+            key={tool.type}
+            active={props.activeTool === tool.type}
+            onClick={() => props.onToolChange(tool.type)}
+            title={`${tool.label} (${tool.shortcut})`}
+          >
+            {tool.icon}
+          </ToolButton>
         ))}
 
         <Divider />
@@ -229,24 +387,11 @@ export function Toolbar(props: ToolbarProps) {
           onChange={props.onColorChange}
         />
 
-        <Divider />
-
-        {/* Fill color */}
-        <ColorPicker
-          label="Fill"
-          colors={paletteColors}
-          value={props.fill}
-          onChange={props.onFillChange}
-          allowTransparent
-        />
-
-        <Divider />
-
         {/* Stroke width */}
         <select
           value={props.strokeWidth}
           onChange={(e) => props.onStrokeWidthChange(Number(e.target.value))}
-          className="text-xs border border-gray-200 rounded px-1 py-1"
+          className="text-xs border border-gray-200 rounded px-1 py-1 ml-1"
           title="Stroke width"
         >
           <option value={1}>1px</option>
@@ -256,7 +401,7 @@ export function Toolbar(props: ToolbarProps) {
         </select>
 
         {/* Stroke style */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 ml-0.5">
           {strokeStyles.map((s) => (
             <ToggleButton
               key={s.value}
@@ -268,6 +413,17 @@ export function Toolbar(props: ToolbarProps) {
             </ToggleButton>
           ))}
         </div>
+
+        <Divider />
+
+        {/* Fill color */}
+        <ColorPicker
+          label="Fill"
+          colors={paletteColors}
+          value={props.fill}
+          onChange={props.onFillChange}
+          allowTransparent
+        />
 
         <Divider />
 
@@ -331,8 +487,80 @@ export function Toolbar(props: ToolbarProps) {
         </button>
       </div>
 
-      {/* Text options (shown when text tool is active) */}
-      {isTextTool && (
+      {/* Row 2: Drawing & creation tools */}
+      <div className="bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2">
+        <ToolButton
+          active={props.activeTool === 'freehand'}
+          onClick={() => props.onToolChange('freehand')}
+          title="Draw (P)"
+        >
+          ✎
+        </ToolButton>
+        <ToolButton
+          active={props.activeTool === 'eraser'}
+          onClick={() => props.onToolChange('eraser')}
+          title="Eraser (E)"
+        >
+          <EraserIcon />
+        </ToolButton>
+
+        <Divider />
+
+        <ToolButton
+          active={props.activeTool === 'text'}
+          onClick={() => props.onToolChange('text')}
+          title="Text (T)"
+        >
+          T
+        </ToolButton>
+        <ToolButton active={false} onClick={props.onImageInsert} title="Image (I)">
+          <ImageIcon />
+        </ToolButton>
+        <ToolButton
+          active={props.activeTool === 'frame'}
+          onClick={() => props.onToolChange('frame')}
+          title="Frame (F)"
+        >
+          ⬚
+        </ToolButton>
+        <ToolButton
+          active={props.activeTool === 'embed'}
+          onClick={() => props.onToolChange('embed')}
+          title="Embed (W)"
+        >
+          🔗
+        </ToolButton>
+
+        <Divider />
+
+        {/* Laser pointer with color options */}
+        <ToolButton
+          active={isLaserTool}
+          onClick={() => props.onToolChange('laser')}
+          title="Laser (K)"
+        >
+          <LaserIcon color={props.laserColor} />
+        </ToolButton>
+        {isLaserTool && (
+          <div className="flex items-center gap-0.5 ml-0.5">
+            {laserColors.map((lc) => (
+              <button
+                key={lc.color}
+                onClick={() => props.onLaserColorChange(lc.color)}
+                className={`w-4 h-4 rounded-full border-2 transition-transform ${props.laserColor === lc.color ? 'border-indigo scale-110' : 'border-gray-300'}`}
+                style={{
+                  backgroundColor: lc.color,
+                  boxShadow: props.laserColor === lc.color ? `0 0 6px ${lc.color}` : 'none',
+                }}
+                title={lc.label}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Text options (shown when text tool is active or text shape is selected) */}
+      {(isTextTool || props.hasTextSelection) && (
         <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
           {/* Text color */}
           <ColorPicker
@@ -346,38 +574,36 @@ export function Toolbar(props: ToolbarProps) {
 
           {/* Font family */}
           <span className="text-[10px] text-french-gray">Font</span>
-          <div className="flex items-center gap-0.5">
-            {fontFamilies.map((f) => (
-              <ToggleButton
-                key={f.value}
-                active={props.fontFamily === f.value}
-                onClick={() => props.onFontFamilyChange(f.value)}
-                title={f.label}
-                className={
-                  f.value === 'hand' ? 'italic' : f.value === 'mono' ? 'font-mono text-[10px]' : ''
-                }
-              >
-                {f.icon}
-              </ToggleButton>
+          <select
+            value={props.fontFamily}
+            onChange={(e) => props.onFontFamilyChange(e.target.value as FontFamily)}
+            className="text-xs border border-gray-200 rounded px-1 py-1"
+            style={{ fontFamily: FONT_FAMILY_CSS[props.fontFamily] }}
+            title="Font family"
+          >
+            {fontFamilyOptions.map((f) => (
+              <option key={f} value={f} style={{ fontFamily: FONT_FAMILY_CSS[f] }}>
+                {FONT_FAMILY_LABELS[f]}
+              </option>
             ))}
-          </div>
+          </select>
 
           <Divider />
 
           {/* Font size */}
           <span className="text-[10px] text-french-gray">Size</span>
-          <div className="flex items-center gap-0.5">
-            {fontSizes.map((s) => (
-              <ToggleButton
-                key={s}
-                active={props.fontSize === s}
-                onClick={() => props.onFontSizeChange(s)}
-                title={`Font size: ${s}`}
-              >
+          <select
+            value={props.fontSize}
+            onChange={(e) => props.onFontSizeChange(Number(e.target.value))}
+            className="text-xs border border-gray-200 rounded px-1 py-1 w-14"
+            title="Font size"
+          >
+            {FONT_SIZES.map((s) => (
+              <option key={s} value={s}>
                 {s}
-              </ToggleButton>
+              </option>
             ))}
-          </div>
+          </select>
 
           <Divider />
 
@@ -390,10 +616,7 @@ export function Toolbar(props: ToolbarProps) {
                 onClick={() => props.onTextAlignChange(a.value)}
                 title={a.label}
               >
-                <span className="block w-4 leading-[3px] text-[6px]" style={{ textAlign: a.value }}>
-                  {'——\n'}
-                  {a.value === 'left' ? '—' : a.value === 'center' ? ' —' : '  ——'}
-                </span>
+                {a.icon}
               </ToggleButton>
             ))}
           </div>

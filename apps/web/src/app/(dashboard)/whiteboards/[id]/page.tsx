@@ -218,7 +218,7 @@ export default function WhiteboardDetailPage({ params }: { params: Promise<{ id:
             onClick={() => setShowAssignments(!showAssignments)}
             className="text-xs px-2 py-0.5 rounded-full bg-indigo/10 text-indigo hover:bg-indigo/20 transition-colors"
           >
-            {showAssignments ? 'Hide' : 'People'}
+            {showAssignments ? 'Hide' : 'Assignments'}
           </button>
         </div>
       </div>

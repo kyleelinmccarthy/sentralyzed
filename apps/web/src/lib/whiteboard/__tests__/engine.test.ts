@@ -13,8 +13,9 @@ import {
   reorderShapes,
   duplicateShapes,
   createShape,
-  FONT_SIZE_PX,
+  fontSizeToPx,
   FONT_FAMILY_CSS,
+  FONT_SIZES,
   IMAGE_MAX_DIMENSION,
   constrainImageDimensions,
   pointInPolygon,
@@ -364,10 +365,10 @@ describe('duplicateShapes', () => {
 
 // ─── Text properties ───
 describe('text shape properties', () => {
-  it('createShape defaults to sans / M / left for text', () => {
+  it('createShape defaults to inter / 16 / left for text', () => {
     const t = createShape({ type: 'text', x: 0, y: 0 })
-    expect(t.fontFamily).toBe('sans')
-    expect(t.fontSize).toBe('M')
+    expect(t.fontFamily).toBe('inter')
+    expect(t.fontSize).toBe(16)
     expect(t.textAlign).toBe('left')
   })
 
@@ -376,27 +377,37 @@ describe('text shape properties', () => {
       type: 'text',
       x: 0,
       y: 0,
-      fontFamily: 'mono',
-      fontSize: 'XL',
+      fontFamily: 'courier',
+      fontSize: 48,
       textAlign: 'center',
     })
-    expect(t.fontFamily).toBe('mono')
-    expect(t.fontSize).toBe('XL')
+    expect(t.fontFamily).toBe('courier')
+    expect(t.fontSize).toBe(48)
     expect(t.textAlign).toBe('center')
   })
 
-  it('FONT_SIZE_PX has all sizes', () => {
-    expect(FONT_SIZE_PX.S).toBe(16)
-    expect(FONT_SIZE_PX.M).toBe(20)
-    expect(FONT_SIZE_PX.L).toBe(28)
-    expect(FONT_SIZE_PX.XL).toBe(40)
+  it('fontSizeToPx handles numeric and legacy string sizes', () => {
+    expect(fontSizeToPx(16)).toBe(16)
+    expect(fontSizeToPx(24)).toBe(24)
+    // Legacy string sizes
+    expect(fontSizeToPx('S' as any)).toBe(16)
+    expect(fontSizeToPx('M' as any)).toBe(20)
+    expect(fontSizeToPx('L' as any)).toBe(28)
+    expect(fontSizeToPx('XL' as any)).toBe(40)
+  })
+
+  it('FONT_SIZES contains standard sizes', () => {
+    expect(FONT_SIZES).toContain(10)
+    expect(FONT_SIZES).toContain(12)
+    expect(FONT_SIZES).toContain(16)
+    expect(FONT_SIZES).toContain(24)
   })
 
   it('FONT_FAMILY_CSS has all families', () => {
-    expect(FONT_FAMILY_CSS.hand).toContain('cursive')
-    expect(FONT_FAMILY_CSS.serif).toContain('serif')
-    expect(FONT_FAMILY_CSS.mono).toContain('monospace')
-    expect(FONT_FAMILY_CSS.sans).toContain('sans-serif')
+    expect(FONT_FAMILY_CSS.arial).toContain('Arial')
+    expect(FONT_FAMILY_CSS.times).toContain('Times')
+    expect(FONT_FAMILY_CSS.courier).toContain('Courier')
+    expect(FONT_FAMILY_CSS.inter).toContain('Inter')
   })
 
   it('hitTest works for text shapes', () => {
@@ -406,10 +417,10 @@ describe('text shape properties', () => {
   })
 
   it('duplicateShapes preserves text properties', () => {
-    const shapes = [makeText({ fontFamily: 'hand', fontSize: 'L', textAlign: 'right' })]
+    const shapes = [makeText({ fontFamily: 'georgia', fontSize: 28, textAlign: 'right' })]
     const dupes = duplicateShapes(shapes)
-    expect(dupes[0]!.fontFamily).toBe('hand')
-    expect(dupes[0]!.fontSize).toBe('L')
+    expect(dupes[0]!.fontFamily).toBe('georgia')
+    expect(dupes[0]!.fontSize).toBe(28)
     expect(dupes[0]!.textAlign).toBe('right')
     expect(dupes[0]!.text).toBe('Hello')
   })
@@ -494,14 +505,14 @@ describe('constrainImageDimensions', () => {
   })
 })
 
-// ─── Handwritten font family ───
-describe('handwritten font family', () => {
-  it('maps hand to Caveat as primary font', () => {
-    expect(FONT_FAMILY_CSS.hand).toMatch(/^Caveat/)
+// ─── Font families ───
+describe('font families', () => {
+  it('maps comic to Comic Sans as primary font', () => {
+    expect(FONT_FAMILY_CSS.comic).toMatch(/Comic Sans/)
   })
 
-  it('includes cursive as generic fallback', () => {
-    expect(FONT_FAMILY_CSS.hand).toContain('cursive')
+  it('includes cursive as generic fallback for comic', () => {
+    expect(FONT_FAMILY_CSS.comic).toContain('cursive')
   })
 })
 

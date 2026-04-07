@@ -24,6 +24,7 @@ import { pollsRouter } from './routes/polls/index.js'
 import { pinRouter } from './routes/pins/index.js'
 import { assetsRouter } from './routes/assets/index.js'
 import { dashboardRouter } from './routes/dashboard/index.js'
+import { settingsRouter } from './routes/settings/index.js'
 
 export const app = new Hono()
 
@@ -38,8 +39,9 @@ app.use(
   }),
 )
 
-// Rate limiting: stricter on auth, general on API
-app.use('/auth/*', rateLimit(20, 15 * 60 * 1000)) // 20 req / 15 min
+// Rate limiting: stricter on login/register, general on API
+app.use('/auth/login', rateLimit(20, 15 * 60 * 1000)) // 20 req / 15 min
+app.use('/auth/register', rateLimit(20, 15 * 60 * 1000))
 app.use('*', rateLimit(200, 60 * 1000)) // 200 req / min
 
 // Health & info
@@ -74,3 +76,4 @@ app.route('/polls', pollsRouter)
 app.route('/pins', pinRouter)
 app.route('/assets', assetsRouter)
 app.route('/dashboard', dashboardRouter)
+app.route('/settings', settingsRouter)

@@ -11,8 +11,18 @@ export type ShapeType =
   | 'embed'
 export type ToolType = ShapeType | 'select' | 'eraser' | 'hand' | 'laser'
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted'
-export type FontFamily = 'hand' | 'serif' | 'mono' | 'sans'
-export type FontSize = 'S' | 'M' | 'L' | 'XL'
+export type FontFamily =
+  | 'arial'
+  | 'helvetica'
+  | 'times'
+  | 'georgia'
+  | 'courier'
+  | 'verdana'
+  | 'trebuchet'
+  | 'impact'
+  | 'comic'
+  | 'inter'
+export type FontSize = number
 export type TextAlign = 'left' | 'center' | 'right'
 export type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se'
 export type ReorderDirection = 'front' | 'back' | 'forward' | 'backward'
@@ -50,14 +60,41 @@ export interface Rect {
 
 // ─── Constants ───
 
-export const FONT_SIZE_PX: Record<FontSize, number> = { S: 16, M: 20, L: 28, XL: 40 }
+/** @deprecated FontSize is now a direct pixel number — use it directly */
+export function fontSizeToPx(size: FontSize | 'S' | 'M' | 'L' | 'XL'): number {
+  if (typeof size === 'number') return size
+  // Legacy string sizes for backward compat with old shapes
+  const legacy: Record<string, number> = { S: 16, M: 20, L: 28, XL: 40 }
+  return legacy[size] ?? 16
+}
 
 export const FONT_FAMILY_CSS: Record<FontFamily, string> = {
-  hand: "Caveat, 'Segoe Print', cursive",
-  serif: "Georgia, 'Times New Roman', serif",
-  mono: "'Fira Code', 'Courier New', monospace",
-  sans: 'Inter, system-ui, sans-serif',
+  arial: 'Arial, Helvetica, sans-serif',
+  helvetica: 'Helvetica, Arial, sans-serif',
+  times: "'Times New Roman', Times, serif",
+  georgia: "Georgia, 'Times New Roman', serif",
+  courier: "'Courier New', Courier, monospace",
+  verdana: 'Verdana, Geneva, sans-serif',
+  trebuchet: "'Trebuchet MS', Helvetica, sans-serif",
+  impact: "Impact, 'Arial Black', sans-serif",
+  comic: "'Comic Sans MS', cursive",
+  inter: 'Inter, system-ui, sans-serif',
 }
+
+export const FONT_FAMILY_LABELS: Record<FontFamily, string> = {
+  arial: 'Arial',
+  helvetica: 'Helvetica',
+  times: 'Times New Roman',
+  georgia: 'Georgia',
+  courier: 'Courier New',
+  verdana: 'Verdana',
+  trebuchet: 'Trebuchet MS',
+  impact: 'Impact',
+  comic: 'Comic Sans MS',
+  inter: 'Inter',
+}
+
+export const FONT_SIZES = [10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72] as const
 
 // ─── Image Constants ───
 
@@ -88,8 +125,8 @@ const SHAPE_DEFAULTS: Omit<Shape, 'id' | 'type' | 'x' | 'y'> = {
   rotation: 0,
   opacity: 100,
   strokeStyle: 'solid',
-  fontFamily: 'sans',
-  fontSize: 'M',
+  fontFamily: 'inter',
+  fontSize: 16,
   textAlign: 'left',
 }
 
@@ -335,8 +372,8 @@ export function measureText(
   fontFamily: FontFamily,
   fontSize: FontSize,
 ): { width: number; height: number } {
-  const sizePx = FONT_SIZE_PX[fontSize]
-  const family = FONT_FAMILY_CSS[fontFamily]
+  const sizePx = fontSizeToPx(fontSize)
+  const family = FONT_FAMILY_CSS[fontFamily] ?? FONT_FAMILY_CSS.inter
   ctx.font = `${sizePx}px ${family}`
   const lines = text.split('\n')
   const lineHeight = sizePx * 1.3
@@ -496,8 +533,8 @@ function renderLineOrArrow(ctx: CanvasRenderingContext2D, shape: Shape) {
 }
 
 function renderText(ctx: CanvasRenderingContext2D, shape: Shape) {
-  const sizePx = FONT_SIZE_PX[shape.fontSize ?? 'M']
-  const family = FONT_FAMILY_CSS[shape.fontFamily ?? 'sans']
+  const sizePx = fontSizeToPx(shape.fontSize ?? 16)
+  const family = FONT_FAMILY_CSS[shape.fontFamily as FontFamily] ?? FONT_FAMILY_CSS.inter
   ctx.font = `${sizePx}px ${family}`
   ctx.fillStyle = shape.color
   ctx.textBaseline = 'top'
@@ -715,6 +752,7 @@ const LASER_LIFETIME_MS = 1000
 export function renderLaserTrail(
   ctx: CanvasRenderingContext2D,
   points: LaserPoint[],
+  color: string = '#FF4444',
 ): LaserPoint[] {
   const now = Date.now()
   const alive = points.filter((p) => now - p.time < LASER_LIFETIME_MS)
@@ -729,9 +767,9 @@ export function renderLaserTrail(
     const age = now - alive[i]!.time
     const alpha = 1 - age / LASER_LIFETIME_MS
     ctx.globalAlpha = alpha
-    ctx.strokeStyle = '#FF4444'
+    ctx.strokeStyle = color
     ctx.shadowBlur = 8
-    ctx.shadowColor = '#FF4444'
+    ctx.shadowColor = color
     ctx.beginPath()
     ctx.moveTo(alive[i - 1]!.x, alive[i - 1]!.y)
     ctx.lineTo(alive[i]!.x, alive[i]!.y)

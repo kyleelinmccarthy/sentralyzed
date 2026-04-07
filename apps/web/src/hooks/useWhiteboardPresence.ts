@@ -49,8 +49,17 @@ export function useWhiteboardPresence({
 
   // Join/leave room
   useEffect(() => {
-    if (!enabled || !isConnected) return
+    if (!enabled || !isConnected) {
+      console.log('[wb-presence] skip join:', {
+        enabled,
+        isConnected,
+        whiteboardId,
+        hasUser: !!user,
+      })
+      return
+    }
 
+    console.log('[wb-presence] joining room:', whiteboardId)
     send('whiteboard:join', { whiteboardId })
 
     return () => {
@@ -64,9 +73,11 @@ export function useWhiteboardPresence({
 
     const unsub = on('whiteboard:presence', (msg: WsMessage) => {
       const payload = msg.payload as { whiteboardId: string; users: WhiteboardUser[] }
+      console.log('[wb-presence] received presence:', payload)
       if (payload.whiteboardId !== whiteboardId) return
 
       const otherUsers = payload.users.filter((u) => u.userId !== user!.id)
+      console.log('[wb-presence] other users:', otherUsers)
       setPresentUsers(otherUsers)
 
       // Auto-unfollow if followed user left

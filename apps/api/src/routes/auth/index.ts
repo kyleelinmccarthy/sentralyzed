@@ -84,6 +84,7 @@ auth.post('/login', zValidator('json', loginSchema), async (c) => {
       name: result.user.name,
       role: result.user.role,
       avatarUrl: result.user.avatarUrl,
+      authProvider: result.user.authProvider,
     },
   })
 })
@@ -138,5 +139,125 @@ auth.get('/me', authMiddleware, (c) => {
   const user = c.get('user')
   return c.json({ user })
 })
+
+// Change password (authenticated)
+auth.post(
+  '/change-password',
+  authMiddleware,
+  zValidator(
+    'json',
+    z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8),
+    }),
+  ),
+  async (c) => {
+    const user = c.get('user')
+    const { currentPassword, newPassword } = c.req.valid('json')
+
+    try {
+      await authService.changePassword(user.id, currentPassword, newPassword)
+      return c.json({ message: 'Password changed successfully' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to change password'
+      return c.json({ error: message }, 400)
+    }
+  },
+)
+
+// Update profile (authenticated)
+auth.patch(
+  '/profile',
+  authMiddleware,
+  zValidator(
+    'json',
+    z.object({
+      name: z.string().min(1).optional(),
+      avatarUrl: z.string().url().nullable().optional(),
+    }),
+  ),
+  async (c) => {
+    const currentUser = c.get('user')
+    const data = c.req.valid('json')
+
+    try {
+      const updated = await authService.updateProfile(currentUser.id, data)
+      return c.json({
+        user: {
+          id: updated.id,
+          email: updated.email,
+          name: updated.name,
+          role: updated.role,
+          avatarUrl: updated.avatarUrl,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update profile'
+      return c.json({ error: message }, 400)
+    }
+  },
+)
+
+// List active sessions
+auth.get('/sessions', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const token = getCookie(c, SESSION_COOKIE)!
+  const currentTokenHash = await import('../../lib/auth.js').then((m) => m.hashToken(token))
+  const sessionList = await authService.getSessions(user.id, currentTokenHash)
+  return c.json({ sessions: sessionList })
+})
+
+// Revoke a specific session
+auth.delete('/sessions/:id', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const sessionId = c.req.param('id') as string
+  try {
+    await authService.revokeSession(user.id, sessionId)
+    return c.json({ ok: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to revoke session'
+    return c.json({ error: message }, 400)
+  }
+})
+
+// Revoke all other sessions
+auth.post('/sessions/revoke-others', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const token = getCookie(c, SESSION_COOKIE)!
+  const currentTokenHash = await import('../../lib/auth.js').then((m) => m.hashToken(token))
+  await authService.revokeOtherSessions(user.id, currentTokenHash)
+  return c.json({ ok: true })
+})
+
+// Export user data
+auth.get('/export', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const data = await authService.exportUserData(user.id)
+  return c.json(data)
+})
+
+// Delete account
+auth.post(
+  '/delete-account',
+  authMiddleware,
+  zValidator(
+    'json',
+    z.object({
+      password: z.string().nullable(),
+    }),
+  ),
+  async (c) => {
+    const user = c.get('user')
+    const { password } = c.req.valid('json')
+    try {
+      await authService.deleteAccount(user.id, password)
+      deleteCookie(c, SESSION_COOKIE)
+      return c.json({ ok: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete account'
+      return c.json({ error: message }, 400)
+    }
+  },
+)
 
 export { auth }

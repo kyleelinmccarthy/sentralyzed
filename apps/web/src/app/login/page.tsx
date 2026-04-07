@@ -35,9 +35,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-jet font-[family-name:var(--font-heading)]">
-            Sentral
-          </h1>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <img src="/sentral_logo.png" alt="Sentral" className="h-10 w-auto" />
+            <h1 className="text-3xl font-bold text-jet font-[family-name:var(--font-heading)]">
+              Sentral
+            </h1>
+          </div>
           <p className="text-sm text-french-gray mt-2">Sign in to your workspace</p>
         </div>
 

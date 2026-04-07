@@ -6,6 +6,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Sentral',
   description: 'All-in-one project management workspace by Solvre Tech',
+  icons: {
+    icon: '/sentral_logo.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
