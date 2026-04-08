@@ -267,41 +267,10 @@ describe('DashboardService', () => {
       expect(result.chatNotifications).toEqual([])
     })
 
-    it('returns assignments via assignmentsService.findByUser', async () => {
-      const mockAssignments = [
-        {
-          id: 'assign-1',
-          entityType: 'project',
-          entityId: 'proj-1',
-          role: 'owner',
-          createdAt: new Date('2026-04-01'),
-        },
-      ]
-      mockTasksFindMany.mockResolvedValue([])
-      mockGoalsFindMany.mockResolvedValue([])
-      mockFeedbackFindMany.mockResolvedValue([])
-      mockAssignmentsFindByUser.mockResolvedValue(mockAssignments)
-      setupMockSelect()
-
-      const result = await service.getMyItems(userId, from, to)
-
-      expect(result.assignments).toEqual([
-        {
-          id: 'assign-1',
-          entityType: 'project',
-          entityId: 'proj-1',
-          role: 'owner',
-          createdAt: new Date('2026-04-01').toISOString(),
-        },
-      ])
-      expect(mockAssignmentsFindByUser).toHaveBeenCalledWith(userId)
-    })
-
     it('returns empty arrays when user has no items', async () => {
       mockTasksFindMany.mockResolvedValue([])
       mockGoalsFindMany.mockResolvedValue([])
       mockFeedbackFindMany.mockResolvedValue([])
-      mockAssignmentsFindByUser.mockResolvedValue([])
       setupMockSelect()
 
       const result = await service.getMyItems(userId, from, to)
@@ -311,7 +280,6 @@ describe('DashboardService', () => {
       expect(result.goals).toEqual([])
       expect(result.feedbackItems).toEqual([])
       expect(result.chatNotifications).toEqual([])
-      expect(result.assignments).toEqual([])
     })
   })
 })

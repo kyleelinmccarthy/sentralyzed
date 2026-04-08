@@ -532,6 +532,8 @@ describe('ExpensesService', () => {
         periodType: 'monthly',
         category: 'software_subscriptions',
         deletedAt: null,
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
       }
       mockBudgetsFindFirst.mockResolvedValue(budget)
 
