@@ -52,6 +52,8 @@ export default function ClientsPage() {
   const [email, setEmail] = useState('')
   const [company, setCompany] = useState('')
   const [phone, setPhone] = useState('')
+  const [notes, setNotes] = useState('')
+  const [clientStatus, setClientStatus] = useState<Client['status']>('lead')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -115,11 +117,15 @@ export default function ClientsPage() {
         ...(email && { email: email.trim() }),
         ...(company && { company: company.trim() }),
         ...(rawPhone && { phone: rawPhone }),
+        ...(notes.trim() && { notes: notes.trim() }),
+        status: clientStatus,
       })
       setName('')
       setEmail('')
       setCompany('')
       setPhone('')
+      setNotes('')
+      setClientStatus('lead')
       setErrors({})
       setTouched({})
       setShowForm(false)
@@ -194,7 +200,7 @@ export default function ClientsPage() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Input
-                  placeholder="Email"
+                  placeholder="Email (optional)"
                   type="email"
                   value={email}
                   onChange={(e) => {
@@ -218,13 +224,13 @@ export default function ClientsPage() {
                 ) : null}
               </div>
               <Input
-                placeholder="Company"
+                placeholder="Company (optional)"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
               />
               <div>
                 <Input
-                  placeholder="Phone"
+                  placeholder="Phone (optional)"
                   type="tel"
                   value={phone}
                   onChange={(e) => {
@@ -247,6 +253,35 @@ export default function ClientsPage() {
                 {errors.phone && touched.phone ? (
                   <p className="text-xs text-coral mt-1">{errors.phone}</p>
                 ) : null}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Status
+                </label>
+                <select
+                  value={clientStatus}
+                  onChange={(e) => setClientStatus(e.target.value as Client['status'])}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="lead">Lead</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="churned">Churned</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Notes (optional)
+                </label>
+                <textarea
+                  placeholder="Additional notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                />
               </div>
             </div>
             <div className="flex justify-end">

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { CATEGORY_LABELS } from '@/lib/expense-helpers'
+import { CATEGORY_LABELS, FREQUENCY_LABELS } from '@/lib/expense-helpers'
 import { parseDollarsToCents } from '@/lib/expense-helpers'
-import { EXPENSE_CATEGORIES } from '@sentral/shared/types/expense'
-import type { Expense, ExpenseCategory } from '@sentral/shared/types/expense'
+import { EXPENSE_CATEGORIES, EXPENSE_FREQUENCIES } from '@sentral/shared/types/expense'
+import type { Expense, ExpenseCategory, ExpenseFrequency } from '@sentral/shared/types/expense'
 import type { CreateExpenseInput } from '@sentral/shared/validators/expense'
 
 interface Project {
@@ -28,6 +28,11 @@ interface AssetOption {
   name: string
 }
 
+interface UserOption {
+  id: string
+  name: string
+}
+
 interface ExpenseFormProps {
   onSubmit: (data: CreateExpenseInput) => Promise<void>
   onCancel: () => void
@@ -35,6 +40,7 @@ interface ExpenseFormProps {
   clients: Client[]
   budgets: BudgetOption[]
   assets: AssetOption[]
+  users: UserOption[]
   initialValues?: Expense
   isSubmitting: boolean
 }
@@ -53,6 +59,7 @@ export function ExpenseForm({
   clients,
   budgets,
   assets,
+  users,
   initialValues,
   isSubmitting,
 }: ExpenseFormProps) {
@@ -68,7 +75,12 @@ export function ExpenseForm({
   const [clientId, setClientId] = useState(initialValues?.clientId ?? '')
   const [budgetId, setBudgetId] = useState(initialValues?.budgetId ?? '')
   const [assetId, setAssetId] = useState(initialValues?.assetId ?? '')
+  const [userId, setUserId] = useState(initialValues?.userId ?? '')
+  const [frequency, setFrequency] = useState<ExpenseFrequency>(
+    initialValues?.frequency ?? 'one_time',
+  )
   const [taxDeductible, setTaxDeductible] = useState(initialValues?.taxDeductible ?? true)
+  const [customLabel, setCustomLabel] = useState(initialValues?.customLabel ?? '')
   const [errors, setErrors] = useState<FormErrors>({})
 
   const validate = (): boolean => {
@@ -90,14 +102,17 @@ export function ExpenseForm({
       amountCents: parseDollarsToCents(amount),
       currency: 'USD',
       category: category as ExpenseCategory,
+      frequency,
       date,
       taxDeductible,
       ...(vendor.trim() && { vendor: vendor.trim() }),
       ...(notes.trim() && { notes: notes.trim() }),
+      ...(customLabel.trim() && { customLabel: customLabel.trim() }),
       ...(projectId && { projectId }),
       ...(clientId && { clientId }),
       ...(budgetId && { budgetId }),
       ...(assetId && { assetId }),
+      ...(userId && { userId }),
     }
 
     await onSubmit(data)
@@ -155,6 +170,37 @@ export function ExpenseForm({
             {errors.category && <p className="mt-1 text-sm text-coral">{errors.category}</p>}
           </div>
 
+          <div>
+            <label
+              htmlFor="expense-frequency"
+              className="block text-sm font-medium text-jet dark:text-dark-text mb-1"
+            >
+              Frequency
+            </label>
+            <select
+              id="expense-frequency"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value as ExpenseFrequency)}
+              className="w-full px-3 py-2 rounded-lg border text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-indigo/20 focus:border-indigo transition-colors"
+            >
+              {EXPENSE_FREQUENCIES.map((f) => (
+                <option key={f} value={f}>
+                  {FREQUENCY_LABELS[f]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Input
+            label="Custom Label"
+            id="expense-custom-label"
+            value={customLabel}
+            onChange={(e) => setCustomLabel(e.target.value)}
+            placeholder="Optional custom label"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
             label="Date"
             id="expense-date"
@@ -171,6 +217,8 @@ export function ExpenseForm({
             onChange={(e) => setVendor(e.target.value)}
             placeholder="Optional"
           />
+
+          <Input label="Currency" id="expense-currency" value="USD" disabled placeholder="USD" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -238,6 +286,29 @@ export function ExpenseForm({
                 {budgets.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {users.length > 0 && (
+            <div>
+              <label
+                htmlFor="expense-user"
+                className="block text-sm font-medium text-jet dark:text-dark-text mb-1"
+              >
+                User (optional)
+              </label>
+              <select
+                id="expense-user"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-indigo/20 focus:border-indigo transition-colors"
+              >
+                <option value="">No user</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
                   </option>
                 ))}
               </select>

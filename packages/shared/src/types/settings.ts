@@ -10,7 +10,6 @@ export const DASHBOARD_WIDGET_OPTIONS = [
   'goals',
   'feedbackItems',
   'chatNotifications',
-  'assignments',
 ] as const
 export type DashboardWidget = (typeof DASHBOARD_WIDGET_OPTIONS)[number]
 
@@ -20,7 +19,14 @@ export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidget, string> = {
   goals: 'Goals',
   feedbackItems: 'Feedback',
   chatNotifications: 'Chat',
-  assignments: 'Assignments',
+}
+
+export const DASHBOARD_WIDGET_DESCRIPTIONS: Record<DashboardWidget, string> = {
+  tasks: 'Show your assigned tasks and to-dos',
+  events: 'Show upcoming calendar events',
+  goals: 'Show goals you own or are assigned to',
+  feedbackItems: 'Show feedback items you submitted or review',
+  chatNotifications: 'Show unread message counts from your channels',
 }
 
 export interface UserSettings {

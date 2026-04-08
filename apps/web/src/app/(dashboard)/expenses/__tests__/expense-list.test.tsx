@@ -15,6 +15,8 @@ const mockExpense: Expense = {
   clientId: null,
   budgetId: null,
   assetId: null,
+  userId: null,
+  frequency: 'one_time',
   taxDeductible: true,
   date: '2026-01-15',
   vendor: null,
@@ -36,6 +38,7 @@ const defaultProps = {
   onEdit: vi.fn(),
   onDelete: vi.fn(),
   onReview: vi.fn(),
+  users: [{ id: 'user-1', name: 'John Doe' }],
   page: 1,
   onPageChange: vi.fn(),
 }

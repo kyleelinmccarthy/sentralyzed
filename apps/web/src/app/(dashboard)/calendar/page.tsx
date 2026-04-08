@@ -33,6 +33,17 @@ interface Attendee {
   avatarUrl: string | null
 }
 
+interface TeamMemberSchedule {
+  userId: string
+  name: string
+  avatarUrl: string | null
+  timezone: string
+  workingHoursStart: string
+  workingHoursEnd: string
+}
+
+type SideTab = 'upcoming' | 'team'
+
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = [
   'January',
@@ -71,6 +82,8 @@ export default function CalendarPage() {
   const [editAttendees, setEditAttendees] = useState<
     Array<{ userId: string; requirement: 'required' | 'optional' }>
   >([])
+  const [sideTab, setSideTab] = useState<SideTab>('upcoming')
+  const [teamSchedule, setTeamSchedule] = useState<TeamMemberSchedule[]>([])
 
   useEffect(() => {
     void loadEvents()
@@ -78,12 +91,22 @@ export default function CalendarPage() {
 
   useEffect(() => {
     void loadUsers()
+    void loadTeamSchedule()
   }, [])
 
   const loadUsers = async () => {
     try {
       const data = await api.get<{ users: User[] }>('/chat/users')
       setAllUsers(data.users)
+    } catch {
+      // API may not be connected yet
+    }
+  }
+
+  const loadTeamSchedule = async () => {
+    try {
+      const data = await api.get<{ schedule: TeamMemberSchedule[] }>('/calendar/team-schedule')
+      setTeamSchedule(data.schedule)
     } catch {
       // API may not be connected yet
     }
@@ -379,37 +402,106 @@ export default function CalendarPage() {
         </div>
       </Card>
 
-      {/* Upcoming events */}
+      {/* Upcoming events / Team schedule tabs */}
       <Card className="p-4 mt-4">
-        <h3 className="text-sm font-semibold text-jet mb-3">Upcoming Events</h3>
-        {events.length === 0 ? (
-          <p className="text-sm text-french-gray">No events this month.</p>
-        ) : (
-          <div className="space-y-2">
-            {events.slice(0, 5).map((ev) => (
-              <div
-                key={ev.id}
-                className="flex items-center gap-3 py-2 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2"
-                onClick={() => openEditPanel(ev)}
-              >
-                <div
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: ev.color || '#5C6BC0' }}
-                />
-                <div>
-                  <p className="text-sm font-medium text-jet">{ev.title}</p>
-                  <p className="text-xs text-french-gray">
-                    {new Date(ev.startTime).toLocaleString([], {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
+        <div className="flex gap-1 mb-3 bg-light-surface dark:bg-dark-card rounded-lg p-1">
+          <button
+            onClick={() => setSideTab('upcoming')}
+            className={`flex-1 text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+              sideTab === 'upcoming' ? 'bg-indigo text-white' : 'text-french-gray hover:text-jet'
+            }`}
+          >
+            Upcoming Events
+          </button>
+          <button
+            onClick={() => setSideTab('team')}
+            className={`flex-1 text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+              sideTab === 'team' ? 'bg-indigo text-white' : 'text-french-gray hover:text-jet'
+            }`}
+          >
+            Team Schedule
+          </button>
+        </div>
+
+        {sideTab === 'upcoming' && (
+          <>
+            {events.length === 0 ? (
+              <p className="text-sm text-french-gray">No events this month.</p>
+            ) : (
+              <div className="space-y-2">
+                {events.slice(0, 5).map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="flex items-center gap-3 py-2 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2"
+                    onClick={() => openEditPanel(ev)}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: ev.color || '#5C6BC0' }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-jet">{ev.title}</p>
+                      <p className="text-xs text-french-gray">
+                        {new Date(ev.startTime).toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
+        )}
+
+        {sideTab === 'team' && (
+          <>
+            {teamSchedule.length === 0 ? (
+              <p className="text-sm text-french-gray">No team members found.</p>
+            ) : (
+              <div className="space-y-2">
+                {teamSchedule.map((member) => {
+                  const formatTime = (t: string) => {
+                    const parts = t.split(':').map(Number)
+                    const h = parts[0] ?? 0
+                    const m = parts[1] ?? 0
+                    const ampm = h >= 12 ? 'PM' : 'AM'
+                    const h12 = h % 12 || 12
+                    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`
+                  }
+                  return (
+                    <div
+                      key={member.userId}
+                      className="flex items-center gap-3 py-2 px-2 -mx-2 rounded"
+                    >
+                      {member.avatarUrl ? (
+                        <img
+                          src={member.avatarUrl}
+                          alt={member.name}
+                          className="w-8 h-8 rounded-full shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo/20 text-indigo flex items-center justify-center text-xs font-bold shrink-0">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-jet truncate">{member.name}</p>
+                        <p className="text-xs text-french-gray">
+                          {formatTime(member.workingHoursStart)} –{' '}
+                          {formatTime(member.workingHoursEnd)}
+                          <span className="ml-2 text-french-gray/60">{member.timezone}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </Card>
 

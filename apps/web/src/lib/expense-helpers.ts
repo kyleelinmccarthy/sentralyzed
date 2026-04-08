@@ -1,5 +1,15 @@
-import type { ExpenseCategory, ExpenseStatus, BudgetPeriod } from '@sentral/shared/types/expense'
-import { EXPENSE_CATEGORIES, EXPENSE_STATUSES, BUDGET_PERIODS } from '@sentral/shared/types/expense'
+import type {
+  ExpenseCategory,
+  ExpenseStatus,
+  ExpenseFrequency,
+  BudgetPeriod,
+} from '@sentral/shared/types/expense'
+import {
+  EXPENSE_CATEGORIES,
+  EXPENSE_STATUSES,
+  EXPENSE_FREQUENCIES,
+  BUDGET_PERIODS,
+} from '@sentral/shared/types/expense'
 
 export function formatCents(amountCents: number): string {
   const dollars = amountCents / 100
@@ -34,8 +44,10 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   education_training: 'bg-teal/10 text-teal',
   equipment: 'bg-amber/10 text-amber',
   insurance: 'bg-french-gray/10 text-french-gray',
+  legal: 'bg-amber/10 text-amber',
   meals: 'bg-coral/10 text-coral',
   office_supplies: 'bg-indigo/10 text-indigo',
+  operating: 'bg-teal/10 text-teal',
   professional_services: 'bg-blue/10 text-blue',
   rent_lease: 'bg-slate-gray/10 text-slate-gray',
   software_subscriptions: 'bg-teal/10 text-teal',
@@ -54,6 +66,13 @@ export const STATUS_COLORS: Record<ExpenseStatus, string> = {
   pending: 'bg-amber/10 text-amber',
   approved: 'bg-teal/10 text-teal',
   rejected: 'bg-coral/10 text-coral',
+}
+
+export const FREQUENCY_LABELS: Record<ExpenseFrequency, string> = {
+  one_time: 'One-Time',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  annually: 'Annually',
 }
 
 export const PERIOD_LABELS: Record<BudgetPeriod, string> = Object.fromEntries(

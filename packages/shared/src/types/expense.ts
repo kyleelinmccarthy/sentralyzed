@@ -5,8 +5,10 @@ export const EXPENSE_CATEGORIES = [
   'education_training',
   'equipment',
   'insurance',
+  'legal',
   'meals',
   'office_supplies',
+  'operating',
   'professional_services',
   'rent_lease',
   'software_subscriptions',
@@ -21,6 +23,9 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
 export const EXPENSE_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number]
+
+export const EXPENSE_FREQUENCIES = ['one_time', 'monthly', 'quarterly', 'annually'] as const
+export type ExpenseFrequency = (typeof EXPENSE_FREQUENCIES)[number]
 
 export const BUDGET_PERIODS = ['monthly', 'quarterly', 'yearly'] as const
 export type BudgetPeriod = (typeof BUDGET_PERIODS)[number]
@@ -37,6 +42,8 @@ export interface Expense {
   clientId: string | null
   budgetId: string | null
   assetId: string | null
+  userId: string | null
+  frequency: ExpenseFrequency
   taxDeductible: boolean
   date: string
   vendor: string | null

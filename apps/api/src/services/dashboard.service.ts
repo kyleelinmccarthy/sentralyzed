@@ -6,28 +6,17 @@ import { goals } from '../db/schema/goals.js'
 import { feedback } from '../db/schema/feedback.js'
 import { channels, channelMembers, messages } from '../db/schema/chat.js'
 import { entityAssignments } from '../db/schema/assignments.js'
-import { assignmentsService } from './assignments.service.js'
 import type { MyItemsResponse } from '@sentral/shared/types/dashboard'
 
 export class DashboardService {
   async getMyItems(userId: string, from: Date, to: Date): Promise<MyItemsResponse> {
-    const [userTasks, userEvents, userGoals, userFeedback, chatNotifications, rawAssignments] =
-      await Promise.all([
-        this.getMyTasks(userId),
-        this.getMyEvents(userId, from, to),
-        this.getMyGoals(userId),
-        this.getMyFeedback(userId),
-        this.getChatNotifications(userId),
-        assignmentsService.findByUser(userId),
-      ])
-
-    const assignments = rawAssignments.map((a) => ({
-      id: a.id,
-      entityType: a.entityType,
-      entityId: a.entityId,
-      role: a.role,
-      createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
-    }))
+    const [userTasks, userEvents, userGoals, userFeedback, chatNotifications] = await Promise.all([
+      this.getMyTasks(userId),
+      this.getMyEvents(userId, from, to),
+      this.getMyGoals(userId),
+      this.getMyFeedback(userId),
+      this.getChatNotifications(userId),
+    ])
 
     return {
       tasks: userTasks,
@@ -35,7 +24,6 @@ export class DashboardService {
       goals: userGoals,
       feedbackItems: userFeedback,
       chatNotifications,
-      assignments,
     }
   }
 
@@ -63,6 +51,7 @@ export class DashboardService {
         status: true,
         priority: true,
         dueDate: true,
+        level: true,
         projectId: true,
       },
     })

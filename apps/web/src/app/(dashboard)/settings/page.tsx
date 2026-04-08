@@ -5,7 +5,11 @@ import { Card } from '@/components/ui/card'
 import { useSettingsStore } from '@/stores/settings'
 import { api } from '@/lib/api'
 import { Bell, LayoutDashboard, Calendar, Check, AlertCircle, VolumeX, X, Plus } from 'lucide-react'
-import { DASHBOARD_WIDGET_OPTIONS, DASHBOARD_WIDGET_LABELS } from '@sentral/shared/types/settings'
+import {
+  DASHBOARD_WIDGET_OPTIONS,
+  DASHBOARD_WIDGET_LABELS,
+  DASHBOARD_WIDGET_DESCRIPTIONS,
+} from '@sentral/shared/types/settings'
 import type { DashboardWidget } from '@sentral/shared/types/settings'
 
 type MessageState = { type: 'success' | 'error'; text: string } | null
@@ -394,22 +398,17 @@ function AppearanceSettings() {
         Choose which sections appear on your dashboard
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="divide-y divide-light-border dark:divide-dark-border">
         {DASHBOARD_WIDGET_OPTIONS.map((widget) => {
           const active = (settings.dashboardWidgets as string[]).includes(widget)
           return (
-            <button
+            <Toggle
               key={widget}
-              onClick={() => handleToggleWidget(widget)}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                active
-                  ? 'border-indigo bg-indigo/5 text-indigo dark:bg-indigo/10'
-                  : 'border-light-border dark:border-dark-border text-french-gray dark:text-dark-text-secondary hover:border-indigo/30'
-              }`}
-            >
-              {active && <Check size={14} />}
-              {DASHBOARD_WIDGET_LABELS[widget]}
-            </button>
+              label={DASHBOARD_WIDGET_LABELS[widget]}
+              description={DASHBOARD_WIDGET_DESCRIPTIONS[widget]}
+              checked={active}
+              onChange={() => handleToggleWidget(widget)}
+            />
           )
         })}
       </div>
@@ -571,16 +570,16 @@ type Tab = 'notifications' | 'appearance' | 'calendar'
 
 export default function SettingsPage() {
   const { settings, isLoading, fetchSettings } = useSettingsStore()
-  const [activeTab, setActiveTab] = useState<Tab>('notifications')
+  const [activeTab, setActiveTab] = useState<Tab>('appearance')
 
   useEffect(() => {
     void fetchSettings()
   }, [fetchSettings])
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={14} /> },
     { id: 'appearance', label: 'Appearance', icon: <LayoutDashboard size={14} /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar size={14} /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={14} /> },
   ]
 
   return (

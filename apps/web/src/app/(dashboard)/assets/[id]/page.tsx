@@ -208,25 +208,35 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                     </option>
                   ))}
                 </select>
+                <div>
+                  <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                    Serial Number (optional)
+                  </label>
+                  <Input
+                    placeholder="Serial number"
+                    value={editData.serialNumber || ''}
+                    onChange={(e) =>
+                      setEditData({ ...editData, serialNumber: e.target.value || null })
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Purchase Cost (optional)
+                </label>
                 <Input
-                  placeholder="Serial number"
-                  value={editData.serialNumber || ''}
+                  placeholder="Purchase cost (cents)"
+                  type="number"
+                  value={editData.purchaseCostCents || ''}
                   onChange={(e) =>
-                    setEditData({ ...editData, serialNumber: e.target.value || null })
+                    setEditData({
+                      ...editData,
+                      purchaseCostCents: e.target.value ? parseInt(e.target.value) : null,
+                    })
                   }
                 />
               </div>
-              <Input
-                placeholder="Purchase cost (cents)"
-                type="number"
-                value={editData.purchaseCostCents || ''}
-                onChange={(e) =>
-                  setEditData({
-                    ...editData,
-                    purchaseCostCents: e.target.value ? parseInt(e.target.value) : null,
-                  })
-                }
-              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">

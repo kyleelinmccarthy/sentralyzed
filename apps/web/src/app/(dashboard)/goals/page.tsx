@@ -201,7 +201,10 @@ export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [level, setLevel] = useState<'company' | 'team' | 'personal'>('personal')
+  const [parentGoalId, setParentGoalId] = useState('')
+  const [targetDate, setTargetDate] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -219,8 +222,18 @@ export default function GoalsPage() {
 
   const createGoal = async () => {
     if (!title.trim()) return
-    await api.post('/goals', { title, level })
+    await api.post('/goals', {
+      title: title.trim(),
+      level,
+      ...(description.trim() && { description: description.trim() }),
+      ...(parentGoalId && { parentGoalId }),
+      ...(targetDate && { targetDate }),
+    })
     setTitle('')
+    setDescription('')
+    setLevel('personal')
+    setParentGoalId('')
+    setTargetDate('')
     setShowForm(false)
     void loadGoals()
   }
@@ -242,23 +255,67 @@ export default function GoalsPage() {
 
       {showForm ? (
         <Card className="p-4 mb-6">
-          <div className="flex gap-3">
+          <div className="space-y-3">
             <Input
-              placeholder="Goal title"
+              placeholder="Goal title *"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="flex-1"
             />
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value as 'company' | 'team' | 'personal')}
-              className="px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm"
-            >
-              <option value="personal">Personal</option>
-              <option value="team">Team</option>
-              <option value="company">Company</option>
-            </select>
-            <Button onClick={() => void createGoal()}>Create</Button>
+            <textarea
+              placeholder="Description (optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none focus:outline-none focus:ring-2 focus:ring-indigo/30"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Level
+                </label>
+                <select
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value as 'company' | 'team' | 'personal')}
+                  className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="personal">Personal</option>
+                  <option value="team">Team</option>
+                  <option value="company">Company</option>
+                </select>
+              </div>
+              {goals.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                    Parent Goal (optional)
+                  </label>
+                  <select
+                    value={parentGoalId}
+                    onChange={(e) => setParentGoalId(e.target.value)}
+                    className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                  >
+                    <option value="">No parent goal</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Target Date (optional)
+                </label>
+                <Input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => void createGoal()}>Create Goal</Button>
+            </div>
           </div>
         </Card>
       ) : null}

@@ -34,7 +34,7 @@ export const userSettings = pgTable('user_settings', {
   dashboardWidgets: jsonb('dashboard_widgets')
     .notNull()
     .$type<string[]>()
-    .default(['tasks', 'events', 'goals', 'feedbackItems', 'chatNotifications', 'assignments']),
+    .default(['tasks', 'events', 'goals', 'feedbackItems', 'chatNotifications']),
 
   // Calendar & scheduling
   timezone: varchar('timezone', { length: 100 }).notNull().default('UTC'),

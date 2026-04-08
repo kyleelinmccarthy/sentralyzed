@@ -1,6 +1,7 @@
 import { eq, and, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { userSettings, mutedEntities } from '../db/schema/settings.js'
+import { users } from '../db/schema/users.js'
 import { channels } from '../db/schema/chat.js'
 import { projects } from '../db/schema/projects.js'
 import type { UpdateSettingsInput, MuteEntityInput } from '@sentral/shared/validators/settings'
@@ -85,6 +86,32 @@ export class SettingsService {
           eq(mutedEntities.entityId, input.entityId),
         ),
       )
+  }
+
+  async getTeamSchedule(): Promise<
+    Array<{
+      userId: string
+      name: string
+      avatarUrl: string | null
+      timezone: string
+      workingHoursStart: string
+      workingHoursEnd: string
+    }>
+  > {
+    const rows = await db
+      .select({
+        userId: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        timezone: userSettings.timezone,
+        workingHoursStart: userSettings.workingHoursStart,
+        workingHoursEnd: userSettings.workingHoursEnd,
+      })
+      .from(users)
+      .innerJoin(userSettings, eq(users.id, userSettings.userId))
+      .where(eq(users.isActive, true))
+
+    return rows
   }
 
   private async resolveNames(type: 'channel' | 'project', ids: string[]): Promise<MutedEntity[]> {

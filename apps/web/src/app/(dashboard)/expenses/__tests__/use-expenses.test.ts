@@ -103,6 +103,7 @@ describe('useExpenses', () => {
       amountCents: 1000,
       currency: 'USD',
       category: 'meals' as const,
+      frequency: 'one_time' as const,
       date: '2026-01-20',
       taxDeductible: true,
     }

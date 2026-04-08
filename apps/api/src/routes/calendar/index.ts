@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { authMiddleware } from '../../middleware/auth.js'
 import { calendarService } from '../../services/calendar.service.js'
+import { settingsService } from '../../services/settings.service.js'
 import type { AppEnv } from '../../types.js'
 
 const calendarRouter = new Hono<AppEnv>()
@@ -130,6 +131,11 @@ calendarRouter.put(
     return c.json({ ok: true })
   },
 )
+
+calendarRouter.get('/team-schedule', async (c) => {
+  const schedule = await settingsService.getTeamSchedule()
+  return c.json({ schedule })
+})
 
 calendarRouter.get('/availability', async (c) => {
   const users = c.req.query('users')?.split(',') || []

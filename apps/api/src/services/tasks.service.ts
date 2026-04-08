@@ -6,6 +6,7 @@ import { whereActiveById, softDelete, getUniqueNotifyIds } from './utils/db-help
 
 type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done'
 type TaskPriority = 'urgent' | 'high' | 'medium' | 'low'
+type TaskLevel = 'project' | 'team' | 'company'
 
 export class TasksService {
   async listByProject(
@@ -13,6 +14,28 @@ export class TasksService {
     filters?: { status?: string; assigneeId?: string; priority?: string },
   ) {
     const conditions = [eq(tasks.projectId, projectId), isNull(tasks.deletedAt)]
+
+    if (filters?.status) {
+      conditions.push(eq(tasks.status, filters.status as TaskStatus))
+    }
+    if (filters?.assigneeId) {
+      conditions.push(eq(tasks.assigneeId, filters.assigneeId))
+    }
+    if (filters?.priority) {
+      conditions.push(eq(tasks.priority, filters.priority as TaskPriority))
+    }
+
+    return db.query.tasks.findMany({
+      where: and(...conditions),
+      orderBy: [asc(tasks.position)],
+    })
+  }
+
+  async listByLevel(
+    level: TaskLevel,
+    filters?: { status?: string; assigneeId?: string; priority?: string },
+  ) {
+    const conditions = [eq(tasks.level, level), isNull(tasks.deletedAt)]
 
     if (filters?.status) {
       conditions.push(eq(tasks.status, filters.status as TaskStatus))
@@ -39,7 +62,8 @@ export class TasksService {
   async create(data: {
     title: string
     description?: unknown
-    projectId: string
+    projectId?: string
+    level?: TaskLevel
     assigneeId?: string
     reporterId: string
     priority?: TaskPriority
@@ -47,12 +71,15 @@ export class TasksService {
     labels?: string[]
     actorName?: string
   }) {
+    const level = data.level || (data.projectId ? 'project' : 'team')
+
     const [task] = await db
       .insert(tasks)
       .values({
         title: data.title,
         description: data.description,
-        projectId: data.projectId,
+        level,
+        projectId: data.projectId || null,
         assigneeId: data.assigneeId,
         reporterId: data.reporterId,
         priority: data.priority || 'medium',

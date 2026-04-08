@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { api } from '@/lib/api'
-import { CheckSquare, CalendarDays, Target, MessageSquare, Inbox } from 'lucide-react'
+import { CheckSquare, CalendarDays, Target, MessageSquare } from 'lucide-react'
 import type {
   MyItemsResponse,
   DashboardTask,
@@ -85,7 +85,6 @@ export default function DashboardPage() {
           'goals',
           'feedbackItems',
           'chatNotifications',
-          'assignments',
         ],
       ),
     [settings?.dashboardWidgets],
@@ -282,7 +281,8 @@ export default function DashboardPage() {
                   : 'text-french-gray dark:text-dark-text-secondary hover:text-jet dark:hover:text-dark-text'
               }`}
             >
-              {tab.label} ({tab.count})
+              {tab.label}
+              {tab.count > 0 ? ` (${tab.count})` : ''}
             </button>
           ))}
         </div>
@@ -297,7 +297,7 @@ export default function DashboardPage() {
         {!isLoading && isEmpty && (
           <Card className="p-8 flex flex-col items-center justify-center text-center">
             <div className="w-12 h-12 rounded-full bg-indigo/10 flex items-center justify-center mb-3">
-              <Inbox size={24} className="text-indigo" strokeWidth={1.5} />
+              <CheckSquare size={24} className="text-indigo" strokeWidth={1.5} />
             </div>
             <p className="text-sm font-medium text-jet dark:text-dark-text mb-1">
               You&apos;re all caught up

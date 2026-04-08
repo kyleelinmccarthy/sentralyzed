@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { EXPENSE_CATEGORIES, BUDGET_PERIODS } from '../types/expense.js'
+import { EXPENSE_CATEGORIES, EXPENSE_FREQUENCIES, BUDGET_PERIODS } from '../types/expense.js'
 
 export const createExpenseSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500),
@@ -12,6 +12,8 @@ export const createExpenseSchema = z.object({
   clientId: z.string().uuid().optional(),
   budgetId: z.string().uuid().optional(),
   assetId: z.string().uuid().optional(),
+  userId: z.string().uuid().optional(),
+  frequency: z.enum(EXPENSE_FREQUENCIES).default('one_time'),
   taxDeductible: z.boolean().default(true),
   date: z.string().date(),
   vendor: z.string().max(255).optional(),
@@ -32,6 +34,7 @@ export const expenseQuerySchema = z.object({
   clientId: z.string().uuid().optional(),
   budgetId: z.string().uuid().optional(),
   assetId: z.string().uuid().optional(),
+  userId: z.string().uuid().optional(),
   startDate: z.string().date().optional(),
   endDate: z.string().date().optional(),
   submittedBy: z.string().uuid().optional(),

@@ -33,6 +33,8 @@ import {
   fontSizeToPx,
   FONT_FAMILY_CSS,
   type ReorderDirection,
+  type Sloppiness,
+  type EdgeStyle,
 } from '@/lib/whiteboard/engine'
 import { Toolbar } from './Toolbar'
 
@@ -87,6 +89,9 @@ export function WhiteboardCanvas({
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>('solid')
   const [opacity, setOpacity] = useState(100)
   const [laserColor, setLaserColor] = useState('#FF4444')
+  const [toolLock, setToolLock] = useState(false)
+  const [sloppiness, setSloppiness] = useState<Sloppiness>(0)
+  const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('sharp')
   const [textColor, setTextColor] = useState('#333333')
   const [fontFamily, setFontFamily] = useState<FontFamily>('inter')
   const [fontSize, setFontSize] = useState<FontSize>(16)
@@ -591,6 +596,8 @@ export function WhiteboardCanvas({
       fill,
       opacity,
       strokeStyle,
+      sloppiness,
+      edgeStyle,
       fontFamily,
       fontSize,
       textAlign,
@@ -779,6 +786,11 @@ export function WhiteboardCanvas({
       }
       onShapesChange([...shapes, newShape])
       drawingShape.current = null
+
+      // Revert to select after drawing unless tool lock is on
+      if (!toolLock) {
+        setTool('select')
+      }
     }
   }
 
@@ -790,6 +802,10 @@ export function WhiteboardCanvas({
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
 
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === 'q' || e.key === 'Q') {
+          setToolLock((prev) => !prev)
+          return
+        }
         const mapped = TOOL_SHORTCUTS[e.key]
         if (mapped) {
           if (mapped === 'image') {
@@ -912,6 +928,49 @@ export function WhiteboardCanvas({
     [shapes, selectedIds, pushUndo, onShapesChange],
   )
 
+  // ─── Selected shape support ───
+  const selectedShapes = shapes.filter((s) => selectedIds.has(s.id))
+  const shapeTypeSet = new Set(selectedShapes.map((s) => s.type))
+  // "Shape selection" = selected shapes that are visual shapes (not text, image, frame, embed)
+  const hasShapeSelection = selectedShapes.some((s) =>
+    ['rectangle', 'diamond', 'ellipse', 'line', 'arrow', 'freehand'].includes(s.type),
+  )
+
+  // Sync toolbar state from selected shape
+  useEffect(() => {
+    if (selectedShapes.length === 1) {
+      const s = selectedShapes[0]!
+      if (s.sloppiness !== undefined) setSloppiness(s.sloppiness)
+      if (s.edgeStyle !== undefined) setEdgeStyle(s.edgeStyle)
+    }
+  }, [selectedIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update selected shapes when sloppiness/edgeStyle change from side panel
+  const updateSelectedShapes = useCallback(
+    (updates: Partial<Shape>) => {
+      if (selectedIds.size === 0) return
+      pushUndo()
+      onShapesChange(shapes.map((s) => (selectedIds.has(s.id) ? { ...s, ...updates } : s)))
+    },
+    [shapes, selectedIds, pushUndo, onShapesChange],
+  )
+
+  const handleSloppinessChange = useCallback(
+    (s: Sloppiness) => {
+      setSloppiness(s)
+      if (selectedIds.size > 0) updateSelectedShapes({ sloppiness: s })
+    },
+    [selectedIds, updateSelectedShapes],
+  )
+
+  const handleEdgeStyleChange = useCallback(
+    (e: EdgeStyle) => {
+      setEdgeStyle(e)
+      if (selectedIds.size > 0) updateSelectedShapes({ edgeStyle: e })
+    },
+    [selectedIds, updateSelectedShapes],
+  )
+
   // ─── Selected text shape support ───
   const selectedTextShapes = shapes.filter((s) => selectedIds.has(s.id) && s.type === 'text')
   const hasTextSelection = selectedTextShapes.length > 0
@@ -1018,6 +1077,12 @@ export function WhiteboardCanvas({
         onStrokeWidthChange={setStrokeWidth}
         onFillChange={setFill}
         onStrokeStyleChange={setStrokeStyle}
+        sloppiness={sloppiness}
+        onSloppinessChange={handleSloppinessChange}
+        edgeStyle={edgeStyle}
+        onEdgeStyleChange={handleEdgeStyleChange}
+        toolLock={toolLock}
+        onToolLockChange={setToolLock}
         onOpacityChange={setOpacity}
         onTextColorChange={handleTextColorChange}
         onFontFamilyChange={handleFontFamilyChange}
@@ -1036,6 +1101,8 @@ export function WhiteboardCanvas({
           onManualPan?.()
         }}
         hasSelection={selectedIds.size > 0}
+        hasShapeSelection={hasShapeSelection}
+        selectedShapeTypes={shapeTypeSet}
         hasTextSelection={hasTextSelection}
         onReorder={handleReorder}
         onImageInsert={handleImageInsert}

@@ -49,17 +49,8 @@ export function useWhiteboardPresence({
 
   // Join/leave room
   useEffect(() => {
-    if (!enabled || !isConnected) {
-      console.log('[wb-presence] skip join:', {
-        enabled,
-        isConnected,
-        whiteboardId,
-        hasUser: !!user,
-      })
-      return
-    }
+    if (!enabled || !isConnected) return
 
-    console.log('[wb-presence] joining room:', whiteboardId)
     send('whiteboard:join', { whiteboardId })
 
     return () => {
@@ -67,20 +58,22 @@ export function useWhiteboardPresence({
     }
   }, [whiteboardId, enabled, isConnected, send])
 
-  // Listen for presence updates
+  // Listen for presence updates (server-pushed roster)
   useEffect(() => {
     if (!enabled) return
 
     const unsub = on('whiteboard:presence', (msg: WsMessage) => {
       const payload = msg.payload as { whiteboardId: string; users: WhiteboardUser[] }
-      console.log('[wb-presence] received presence:', payload)
       if (payload.whiteboardId !== whiteboardId) return
 
       const otherUsers = payload.users.filter((u) => u.userId !== user!.id)
-      console.log('[wb-presence] other users:', otherUsers)
+      // Seed the lastSeen map so presence is immediately visible
+      const now = Date.now()
+      for (const u of otherUsers) {
+        lastSeenRef.current.set(u.userId, { userName: u.userName, time: now })
+      }
       setPresentUsers(otherUsers)
 
-      // Auto-unfollow if followed user left
       if (followingRef.current && !payload.users.some((u) => u.userId === followingRef.current)) {
         setFollowingUserId(null)
       }
@@ -89,7 +82,9 @@ export function useWhiteboardPresence({
     return unsub
   }, [whiteboardId, enabled, on, user])
 
-  // Listen for viewport updates from followed user
+  // Listen for viewport updates — also derive presence from them
+  const lastSeenRef = useRef<Map<string, { userName: string; time: number }>>(new Map())
+
   useEffect(() => {
     if (!enabled) return
 
@@ -97,17 +92,69 @@ export function useWhiteboardPresence({
       const payload = msg.payload as {
         whiteboardId: string
         userId: string
+        userName: string
         pan: { x: number; y: number }
         zoom: number
       }
       if (payload.whiteboardId !== whiteboardId) return
-      if (payload.userId !== followingRef.current) return
+      if (payload.userId === user!.id) return
 
-      onViewportSyncRef.current({ pan: payload.pan, zoom: payload.zoom })
+      // Track this user as present (heartbeat-style)
+      lastSeenRef.current.set(payload.userId, {
+        userName: payload.userName,
+        time: Date.now(),
+      })
+
+      // Rebuild presentUsers from lastSeen map
+      const now = Date.now()
+      const STALE_MS = 5000
+      const active: WhiteboardUser[] = []
+      for (const [userId, info] of lastSeenRef.current) {
+        if (now - info.time < STALE_MS) {
+          active.push({ userId, userName: info.userName })
+        } else {
+          lastSeenRef.current.delete(userId)
+        }
+      }
+      setPresentUsers(active)
+
+      // Follow viewport sync
+      if (payload.userId === followingRef.current) {
+        onViewportSyncRef.current({ pan: payload.pan, zoom: payload.zoom })
+      }
     })
 
     return unsub
-  }, [whiteboardId, enabled, on])
+  }, [whiteboardId, enabled, on, user])
+
+  // Prune stale users periodically
+  useEffect(() => {
+    if (!enabled) return
+    const STALE_MS = 5000
+    const interval = setInterval(() => {
+      const now = Date.now()
+      let changed = false
+      for (const [userId, info] of lastSeenRef.current) {
+        if (now - info.time >= STALE_MS) {
+          lastSeenRef.current.delete(userId)
+          changed = true
+        }
+      }
+      if (changed) {
+        const active: WhiteboardUser[] = []
+        for (const [userId, info] of lastSeenRef.current) {
+          active.push({ userId, userName: info.userName })
+        }
+        setPresentUsers(active)
+
+        // Auto-unfollow if followed user went stale
+        if (followingRef.current && !lastSeenRef.current.has(followingRef.current)) {
+          setFollowingUserId(null)
+        }
+      }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [enabled])
 
   // Throttled viewport broadcast
   useEffect(() => {

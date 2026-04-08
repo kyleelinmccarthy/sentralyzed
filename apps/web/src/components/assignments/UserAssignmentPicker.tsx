@@ -21,8 +21,6 @@ interface Assignment {
   createdAt: string
 }
 
-const ROLES = ['assignee', 'owner', 'reviewer', 'collaborator', 'viewer'] as const
-
 interface UserAssignmentPickerProps {
   entityType: string
   entityId: string
@@ -37,7 +35,6 @@ export function UserAssignmentPicker({
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [selectedRole, setSelectedRole] = useState<string>('assignee')
   const [isLoading, setIsLoading] = useState(true)
   const [isAssigning, setIsAssigning] = useState(false)
 
@@ -71,7 +68,6 @@ export function UserAssignmentPicker({
         entityType,
         entityId,
         userId: selectedUserId,
-        role: selectedRole,
       })
       setSelectedUserId('')
       await load()
@@ -86,16 +82,6 @@ export function UserAssignmentPicker({
   const handleRemove = async (assignmentId: string) => {
     try {
       await api.delete(`/assignments/${assignmentId}`)
-      await load()
-      onUpdate?.()
-    } catch {
-      // ignore
-    }
-  }
-
-  const handleRoleChange = async (assignmentId: string, role: string) => {
-    try {
-      await api.patch(`/assignments/${assignmentId}`, { role })
       await load()
       onUpdate?.()
     } catch {
@@ -130,17 +116,6 @@ export function UserAssignmentPicker({
             <span className="flex-1 text-sm text-jet dark:text-dark-text truncate">
               {getUserName(assignment.userId)}
             </span>
-            <select
-              value={assignment.role ?? 'assignee'}
-              onChange={(e) => handleRoleChange(assignment.id, e.target.value)}
-              className="rounded border border-light-border dark:border-dark-border px-1.5 py-0.5 text-xs bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-1 focus:ring-indigo/20"
-            >
-              {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
             <button
               onClick={() => handleRemove(assignment.id)}
               className="text-french-gray hover:text-coral text-sm transition-colors"
@@ -163,17 +138,6 @@ export function UserAssignmentPicker({
             {availableUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="rounded-lg border border-light-border dark:border-dark-border px-2 py-1.5 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/20"
-          >
-            {ROLES.map((role) => (
-              <option key={role} value={role}>
-                {role}
               </option>
             ))}
           </select>

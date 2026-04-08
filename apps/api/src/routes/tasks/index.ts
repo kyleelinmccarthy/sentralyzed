@@ -9,15 +9,23 @@ const tasksRouter = new Hono<AppEnv>()
 
 tasksRouter.use('*', authMiddleware)
 
-const createTaskSchema = z.object({
-  title: z.string().min(1).max(255),
-  description: z.unknown().optional(),
-  projectId: z.string().uuid(),
-  assigneeId: z.string().uuid().optional(),
-  priority: z.enum(['urgent', 'high', 'medium', 'low']).optional(),
-  dueDate: z.string().optional(),
-  labels: z.array(z.string()).optional(),
-})
+const taskLevelEnum = z.enum(['project', 'team', 'company'])
+
+const createTaskSchema = z
+  .object({
+    title: z.string().min(1).max(255),
+    description: z.unknown().optional(),
+    projectId: z.string().uuid().optional(),
+    level: taskLevelEnum.optional(),
+    assigneeId: z.string().uuid().optional(),
+    priority: z.enum(['urgent', 'high', 'medium', 'low']).optional(),
+    dueDate: z.string().optional(),
+    labels: z.array(z.string()).optional(),
+  })
+  .refine((data) => data.level !== 'project' || data.projectId, {
+    message: 'projectId is required for project-level tasks',
+    path: ['projectId'],
+  })
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(255).optional(),
@@ -28,6 +36,20 @@ const updateTaskSchema = z.object({
   dueDate: z.string().optional(),
   position: z.number().int().optional(),
   labels: z.array(z.string()).optional(),
+})
+
+// List tasks by level (team or company)
+tasksRouter.get('/level/:level', async (c) => {
+  const level = c.req.param('level')
+  if (!['team', 'company'].includes(level)) {
+    return c.json({ error: 'Invalid level. Use "team" or "company"' }, 400)
+  }
+  const tasksList = await tasksService.listByLevel(level as 'team' | 'company', {
+    status: c.req.query('status'),
+    assigneeId: c.req.query('assigneeId'),
+    priority: c.req.query('priority'),
+  })
+  return c.json({ tasks: tasksList })
 })
 
 // List tasks for a project

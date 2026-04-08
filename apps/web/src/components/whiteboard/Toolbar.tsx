@@ -1,8 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import type {
   ToolType,
   StrokeStyle,
+  Sloppiness,
+  EdgeStyle,
   FontFamily,
   FontSize,
   TextAlign,
@@ -27,6 +30,12 @@ interface ToolbarProps {
   onStrokeWidthChange: (width: number) => void
   onFillChange: (fill: string) => void
   onStrokeStyleChange: (style: StrokeStyle) => void
+  sloppiness: Sloppiness
+  onSloppinessChange: (sloppiness: Sloppiness) => void
+  edgeStyle: EdgeStyle
+  onEdgeStyleChange: (edgeStyle: EdgeStyle) => void
+  toolLock: boolean
+  onToolLockChange: (locked: boolean) => void
   onOpacityChange: (opacity: number) => void
   onTextColorChange: (color: string) => void
   onFontFamilyChange: (family: FontFamily) => void
@@ -41,6 +50,8 @@ interface ToolbarProps {
   onZoomChange: (zoom: number) => void
   onPanReset: () => void
   hasSelection: boolean
+  hasShapeSelection: boolean
+  selectedShapeTypes: Set<string>
   hasTextSelection: boolean
   onReorder: (direction: ReorderDirection) => void
   selectedFrameLabel?: string
@@ -57,19 +68,8 @@ const SelectIcon = () => (
 )
 
 const HandIcon = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 1.5v8M5.5 4v6.5M3 6v4.5a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V4.5" />
-    <path d="M10.5 3v7.5" />
-    <path d="M13 5.5v5" />
+  <svg width="16" height="16" viewBox="0 0 512 512" fill="currentColor">
+    <path d="M288 32c-17.7 0-32 14.3-32 32v208c0 8.8-7.2 16-16 16s-16-7.2-16-16V96c0-17.7-14.3-32-32-32s-32 14.3-32 32v240l-26.5-34.6c-11.3-14.8-32.5-17.5-47.2-6.1s-17.5 32.5-6.1 47.2L196.5 460c12.1 15.8 30.9 25 50.7 25H352c53 0 96-43 96-96V192c0-17.7-14.3-32-32-32s-32 14.3-32 32v80c0 8.8-7.2 16-16 16s-16-7.2-16-16V128c0-17.7-14.3-32-32-32s-32 14.3-32 32v144c0 8.8-7.2 16-16 16s-16-7.2-16-16V64c0-17.7-14.3-32-32-32z" />
   </svg>
 )
 
@@ -124,16 +124,6 @@ const LaserIcon = ({ color }: { color: string }) => (
 )
 
 // ─── Tool definitions split into groups ───
-
-const navigationTools: {
-  type: ToolType
-  label: string
-  icon: React.ReactNode
-  shortcut: string
-}[] = [
-  { type: 'select', label: 'Select (Alt+drag: lasso)', icon: <SelectIcon />, shortcut: 'V' },
-  { type: 'hand', label: 'Hand (Pan)', icon: <HandIcon />, shortcut: 'H' },
-]
 
 const shapeTools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
   { type: 'rectangle', label: 'Rectangle', icon: '▭', shortcut: 'R' },
@@ -346,331 +336,585 @@ function ToolButton({
 export function Toolbar(props: ToolbarProps) {
   const isTextTool = props.activeTool === 'text'
   const isLaserTool = props.activeTool === 'laser'
+  const [laserPickerOpen, setLaserPickerOpen] = useState(false)
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
-      {/* Row 1: Navigation + Shapes + Stroke properties + Undo/Redo + Zoom */}
-      <div className="bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2">
-        {/* Navigation tools: Select, Hand */}
-        {navigationTools.map((tool) => (
-          <ToolButton
-            key={tool.type}
-            active={props.activeTool === tool.type}
-            onClick={() => props.onToolChange(tool.type)}
-            title={`${tool.label} (${tool.shortcut})`}
-          >
-            {tool.icon}
-          </ToolButton>
-        ))}
-
-        <Divider />
-
-        {/* Shape tools */}
-        {shapeTools.map((tool) => (
-          <ToolButton
-            key={tool.type}
-            active={props.activeTool === tool.type}
-            onClick={() => props.onToolChange(tool.type)}
-            title={`${tool.label} (${tool.shortcut})`}
-          >
-            {tool.icon}
-          </ToolButton>
-        ))}
-
-        <Divider />
-
-        {/* Stroke color */}
-        <ColorPicker
-          label="Stroke"
-          colors={paletteColors}
-          value={props.color}
-          onChange={props.onColorChange}
-        />
-
-        {/* Stroke width */}
-        <select
-          value={props.strokeWidth}
-          onChange={(e) => props.onStrokeWidthChange(Number(e.target.value))}
-          className="text-xs border border-gray-200 rounded px-1 py-1 ml-1"
-          title="Stroke width"
-        >
-          <option value={1}>1px</option>
-          <option value={2}>2px</option>
-          <option value={4}>4px</option>
-          <option value={8}>8px</option>
-        </select>
-
-        {/* Stroke style */}
-        <div className="flex items-center gap-0.5 ml-0.5">
-          {strokeStyles.map((s) => (
-            <ToggleButton
-              key={s.value}
-              active={props.strokeStyle === s.value}
-              onClick={() => props.onStrokeStyleChange(s.value)}
-              title={s.label}
+    <>
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+        {/* Two-row toolbar */}
+        <div className="bg-white rounded-[12px] shadow-lg flex flex-col gap-0 p-2">
+          {/* Row 1: Lock + Select + Shapes + Stroke colors + Stroke width/style + Opacity + Undo/Redo */}
+          <div className="flex items-center gap-1">
+            {/* Tool lock */}
+            <button
+              onClick={() => props.onToolLockChange(!props.toolLock)}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-colors ${props.toolLock ? 'bg-indigo/10 text-indigo' : 'hover:bg-gray-100 text-french-gray'}`}
+              title={`Keep selected tool active after drawing (Q) — ${props.toolLock ? 'ON' : 'OFF'}`}
             >
-              {s.preview}
-            </ToggleButton>
-          ))}
-        </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {props.toolLock ? (
+                  <>
+                    <rect
+                      x="3"
+                      y="7"
+                      width="10"
+                      height="8"
+                      rx="1.5"
+                      fill="currentColor"
+                      opacity="0.15"
+                    />
+                    <rect x="3" y="7" width="10" height="8" rx="1.5" />
+                    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+                  </>
+                ) : (
+                  <>
+                    <rect x="3" y="7" width="10" height="8" rx="1.5" />
+                    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v.5" />
+                  </>
+                )}
+              </svg>
+            </button>
 
-        <Divider />
+            <Divider />
 
-        {/* Fill color */}
-        <ColorPicker
-          label="Fill"
-          colors={paletteColors}
-          value={props.fill}
-          onChange={props.onFillChange}
-          allowTransparent
-        />
+            {/* Select tool */}
+            <ToolButton
+              active={props.activeTool === 'select'}
+              onClick={() => props.onToolChange('select')}
+              title="Select (Alt+drag: lasso) (V)"
+            >
+              <SelectIcon />
+            </ToolButton>
 
-        <Divider />
+            <Divider />
 
-        {/* Opacity */}
-        <div className="flex items-center gap-1" title={`Opacity: ${props.opacity}%`}>
-          <input
-            type="range"
-            min={10}
-            max={100}
-            step={5}
-            value={props.opacity}
-            onChange={(e) => props.onOpacityChange(Number(e.target.value))}
-            className="w-16 h-1 accent-indigo"
-          />
-          <span className="text-[10px] text-french-gray w-6">{props.opacity}%</span>
-        </div>
-
-        <Divider />
-
-        {/* Undo/Redo */}
-        <button
-          onClick={props.onUndo}
-          disabled={!props.canUndo}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
-          title="Undo (Ctrl+Z)"
-        >
-          ↩
-        </button>
-        <button
-          onClick={props.onRedo}
-          disabled={!props.canRedo}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm disabled:opacity-30 hover:bg-gray-100"
-          title="Redo (Ctrl+Shift+Z)"
-        >
-          ↪
-        </button>
-
-        <Divider />
-
-        {/* Zoom */}
-        <button
-          onClick={() => props.onZoomChange(Math.min(props.zoom * 1.2, 10))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
-          title="Zoom in"
-        >
-          +
-        </button>
-        <button
-          onClick={props.onPanReset}
-          className="px-1 py-1 text-xs rounded hover:bg-gray-100 min-w-[3rem] text-center"
-          title="Reset view"
-        >
-          {Math.round(props.zoom * 100)}%
-        </button>
-        <button
-          onClick={() => props.onZoomChange(Math.max(props.zoom / 1.2, 0.1))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
-          title="Zoom out"
-        >
-          −
-        </button>
-      </div>
-
-      {/* Row 2: Drawing & creation tools */}
-      <div className="bg-white rounded-[12px] shadow-lg flex items-center gap-1 p-2">
-        <ToolButton
-          active={props.activeTool === 'freehand'}
-          onClick={() => props.onToolChange('freehand')}
-          title="Draw (P)"
-        >
-          ✎
-        </ToolButton>
-        <ToolButton
-          active={props.activeTool === 'eraser'}
-          onClick={() => props.onToolChange('eraser')}
-          title="Eraser (E)"
-        >
-          <EraserIcon />
-        </ToolButton>
-
-        <Divider />
-
-        <ToolButton
-          active={props.activeTool === 'text'}
-          onClick={() => props.onToolChange('text')}
-          title="Text (T)"
-        >
-          T
-        </ToolButton>
-        <ToolButton active={false} onClick={props.onImageInsert} title="Image (I)">
-          <ImageIcon />
-        </ToolButton>
-        <ToolButton
-          active={props.activeTool === 'frame'}
-          onClick={() => props.onToolChange('frame')}
-          title="Frame (F)"
-        >
-          ⬚
-        </ToolButton>
-        <ToolButton
-          active={props.activeTool === 'embed'}
-          onClick={() => props.onToolChange('embed')}
-          title="Embed (W)"
-        >
-          🔗
-        </ToolButton>
-
-        <Divider />
-
-        {/* Laser pointer with color options */}
-        <ToolButton
-          active={isLaserTool}
-          onClick={() => props.onToolChange('laser')}
-          title="Laser (K)"
-        >
-          <LaserIcon color={props.laserColor} />
-        </ToolButton>
-        {isLaserTool && (
-          <div className="flex items-center gap-0.5 ml-0.5">
-            {laserColors.map((lc) => (
-              <button
-                key={lc.color}
-                onClick={() => props.onLaserColorChange(lc.color)}
-                className={`w-4 h-4 rounded-full border-2 transition-transform ${props.laserColor === lc.color ? 'border-indigo scale-110' : 'border-gray-300'}`}
-                style={{
-                  backgroundColor: lc.color,
-                  boxShadow: props.laserColor === lc.color ? `0 0 6px ${lc.color}` : 'none',
-                }}
-                title={lc.label}
-              />
+            {/* Shape tools */}
+            {shapeTools.map((tool) => (
+              <ToolButton
+                key={tool.type}
+                active={props.activeTool === tool.type}
+                onClick={() => props.onToolChange(tool.type)}
+                title={`${tool.label} (${tool.shortcut})`}
+              >
+                {tool.icon}
+              </ToolButton>
             ))}
+
+            <Divider />
+
+            {/* Stroke color */}
+            <ColorPicker
+              label="Stroke"
+              colors={paletteColors}
+              value={props.color}
+              onChange={props.onColorChange}
+            />
+
+            {/* Stroke width */}
+            <select
+              value={props.strokeWidth}
+              onChange={(e) => props.onStrokeWidthChange(Number(e.target.value))}
+              className="text-xs border border-gray-200 rounded px-1 py-1 ml-1"
+              title="Stroke width"
+            >
+              <option value={1}>1px</option>
+              <option value={2}>2px</option>
+              <option value={4}>4px</option>
+              <option value={8}>8px</option>
+            </select>
+
+            {/* Stroke style */}
+            <div className="flex items-center gap-0.5 ml-0.5">
+              {strokeStyles.map((s) => (
+                <ToggleButton
+                  key={s.value}
+                  active={props.strokeStyle === s.value}
+                  onClick={() => props.onStrokeStyleChange(s.value)}
+                  title={s.label}
+                >
+                  {s.preview}
+                </ToggleButton>
+              ))}
+            </div>
+
+            <Divider />
+
+            {/* Opacity */}
+            <div className="flex items-center gap-1" title={`Opacity: ${props.opacity}%`}>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={props.opacity}
+                onChange={(e) => props.onOpacityChange(Number(e.target.value))}
+                className="w-16 h-1 accent-indigo"
+              />
+              <span className="text-[10px] text-french-gray w-6">{props.opacity}%</span>
+            </div>
+
+            {/* Spacer to push undo/redo to the right */}
+            <div className="flex-1" />
+
+            {/* Undo/Redo */}
+            <button
+              onClick={props.onUndo}
+              disabled={!props.canUndo}
+              className="w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100"
+              title="Undo (Ctrl+Z)"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6h7a4 4 0 0 1 0 8H8" />
+                <path d="M6 3L3 6l3 3" />
+              </svg>
+            </button>
+            <button
+              onClick={props.onRedo}
+              disabled={!props.canRedo}
+              className="w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100"
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M13 6H6a4 4 0 0 0 0 8h2" />
+                <path d="M10 3l3 3-3 3" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Thin separator between rows */}
+          <div className="h-px bg-gray-200 my-1" />
+
+          {/* Row 2: Hand + Drawing tools + Fill colors + (spacer) + Zoom */}
+          <div className="flex items-center gap-1">
+            {/* Hand tool (below Select) */}
+            <ToolButton
+              active={props.activeTool === 'hand'}
+              onClick={() => props.onToolChange('hand')}
+              title="Hand (Pan) (H)"
+            >
+              <HandIcon />
+            </ToolButton>
+
+            <Divider />
+
+            {/* Drawing & creation tools (below shape tools) */}
+            <ToolButton
+              active={props.activeTool === 'freehand'}
+              onClick={() => props.onToolChange('freehand')}
+              title="Draw (P)"
+            >
+              ✎
+            </ToolButton>
+            <ToolButton
+              active={props.activeTool === 'eraser'}
+              onClick={() => props.onToolChange('eraser')}
+              title="Eraser (E)"
+            >
+              <EraserIcon />
+            </ToolButton>
+            <ToolButton
+              active={props.activeTool === 'text'}
+              onClick={() => props.onToolChange('text')}
+              title="Text (T)"
+            >
+              T
+            </ToolButton>
+            <ToolButton active={false} onClick={props.onImageInsert} title="Image (I)">
+              <ImageIcon />
+            </ToolButton>
+            <ToolButton
+              active={props.activeTool === 'frame'}
+              onClick={() => props.onToolChange('frame')}
+              title="Frame (F)"
+            >
+              ⬚
+            </ToolButton>
+            <ToolButton
+              active={props.activeTool === 'embed'}
+              onClick={() => props.onToolChange('embed')}
+              title="Embed (W)"
+            >
+              🔗
+            </ToolButton>
+
+            {/* Spacer so Fill aligns below Stroke */}
+            <div className="flex-1" />
+
+            {/* Fill color (aligned below Stroke color) */}
+            <ColorPicker
+              label="Fill"
+              colors={paletteColors}
+              value={props.fill}
+              onChange={props.onFillChange}
+              allowTransparent
+            />
+
+            {/* Spacer to push right-side items */}
+            <div className="flex-1" />
+
+            {/* Laser pointer with dropdown color picker */}
+            <div className="relative">
+              <div className="flex items-center">
+                <ToolButton
+                  active={isLaserTool}
+                  onClick={() => props.onToolChange('laser')}
+                  title="Laser (K)"
+                >
+                  <LaserIcon color={props.laserColor} />
+                </ToolButton>
+                <button
+                  onClick={() => {
+                    if (!isLaserTool) props.onToolChange('laser')
+                    setLaserPickerOpen(!laserPickerOpen)
+                  }}
+                  className="w-4 h-4 flex items-center justify-center text-french-gray hover:text-jet"
+                  title="Change laser color"
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+                    <path d="M1 3l3 3 3-3z" />
+                  </svg>
+                </button>
+              </div>
+              {laserPickerOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-1 z-20">
+                  {laserColors.map((lc) => (
+                    <button
+                      key={lc.color}
+                      onClick={() => {
+                        props.onLaserColorChange(lc.color)
+                        props.onToolChange('laser')
+                        setLaserPickerOpen(false)
+                      }}
+                      className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${props.laserColor === lc.color ? 'bg-indigo/10' : ''}`}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded-full border-2 ${props.laserColor === lc.color ? 'border-indigo' : 'border-gray-300'}`}
+                        style={{
+                          backgroundColor: lc.color,
+                          boxShadow: props.laserColor === lc.color ? `0 0 6px ${lc.color}` : 'none',
+                        }}
+                      />
+                      <span className="text-xs text-jet">{lc.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Divider />
+
+            {/* Zoom (below Undo/Redo) */}
+            <button
+              onClick={() => props.onZoomChange(Math.min(props.zoom * 1.2, 10))}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
+              title="Zoom in"
+            >
+              +
+            </button>
+            <button
+              onClick={props.onPanReset}
+              className="px-1 py-1 text-xs rounded hover:bg-gray-100 min-w-[3rem] text-center"
+              title="Reset view"
+            >
+              {Math.round(props.zoom * 100)}%
+            </button>
+            <button
+              onClick={() => props.onZoomChange(Math.max(props.zoom / 1.2, 0.1))}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100"
+              title="Zoom out"
+            >
+              −
+            </button>
+          </div>
+        </div>
+
+        {/* Text options (shown when text tool is active or text shape is selected) */}
+        {(isTextTool || props.hasTextSelection) && (
+          <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
+            {/* Text color */}
+            <ColorPicker
+              label="Color"
+              colors={paletteColors}
+              value={props.textColor}
+              onChange={props.onTextColorChange}
+            />
+
+            <Divider />
+
+            {/* Font family */}
+            <span className="text-[10px] text-french-gray">Font</span>
+            <select
+              value={props.fontFamily}
+              onChange={(e) => props.onFontFamilyChange(e.target.value as FontFamily)}
+              className="text-xs border border-gray-200 rounded px-1 py-1"
+              style={{ fontFamily: FONT_FAMILY_CSS[props.fontFamily] }}
+              title="Font family"
+            >
+              {fontFamilyOptions.map((f) => (
+                <option key={f} value={f} style={{ fontFamily: FONT_FAMILY_CSS[f] }}>
+                  {FONT_FAMILY_LABELS[f]}
+                </option>
+              ))}
+            </select>
+
+            <Divider />
+
+            {/* Font size */}
+            <span className="text-[10px] text-french-gray">Size</span>
+            <select
+              value={props.fontSize}
+              onChange={(e) => props.onFontSizeChange(Number(e.target.value))}
+              className="text-xs border border-gray-200 rounded px-1 py-1 w-14"
+              title="Font size"
+            >
+              {FONT_SIZES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+
+            <Divider />
+
+            {/* Text align */}
+            <div className="flex items-center gap-0.5">
+              {textAligns.map((a) => (
+                <ToggleButton
+                  key={a.value}
+                  active={props.textAlign === a.value}
+                  onClick={() => props.onTextAlignChange(a.value)}
+                  title={a.label}
+                >
+                  {a.icon}
+                </ToggleButton>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Frame label (shown when a frame is selected) */}
+        {props.selectedFrameLabel !== undefined && (
+          <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
+            <span className="text-[10px] text-french-gray">Label</span>
+            <input
+              type="text"
+              value={props.selectedFrameLabel}
+              onChange={(e) => props.onFrameLabelChange(e.target.value)}
+              className="text-xs border border-gray-200 rounded px-2 py-1 w-32"
+              placeholder="Frame name"
+            />
           </div>
         )}
       </div>
+      {/* Left side panel — shape properties (shown when shapes are selected) */}
+      {props.hasShapeSelection && (
+        <div className="absolute top-4 left-4 z-10 bg-white rounded-[12px] shadow-lg p-3 flex flex-col gap-3 w-[200px]">
+          {/* Sloppiness */}
+          <div>
+            <span className="text-[10px] text-french-gray block mb-1.5">Sloppiness</span>
+            <div className="flex items-center gap-1">
+              {([0, 1, 2] as Sloppiness[]).map((level) => (
+                <ToggleButton
+                  key={level}
+                  active={props.sloppiness === level}
+                  onClick={() => props.onSloppinessChange(level)}
+                  title={
+                    level === 0
+                      ? 'Architect (precise)'
+                      : level === 1
+                        ? 'Artist (moderate)'
+                        : 'Cartoonist (sloppy)'
+                  }
+                  className="flex-1 !py-1.5"
+                >
+                  <svg
+                    width="20"
+                    height="12"
+                    viewBox="0 0 20 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  >
+                    {level === 0 && <path d="M2 6h16" />}
+                    {level === 1 && <path d="M2 6q4-3 8 0t8 0" />}
+                    {level === 2 && <path d="M2 6q2-5 5 1t4-2q2 4 5 0t2 1" />}
+                  </svg>
+                </ToggleButton>
+              ))}
+            </div>
+          </div>
 
-      {/* Text options (shown when text tool is active or text shape is selected) */}
-      {(isTextTool || props.hasTextSelection) && (
-        <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
-          {/* Text color */}
-          <ColorPicker
-            label="Color"
-            colors={paletteColors}
-            value={props.textColor}
-            onChange={props.onTextColorChange}
-          />
+          {/* Edges — not shown for ellipses */}
+          {!props.selectedShapeTypes.has('ellipse') && (
+            <div>
+              <span className="text-[10px] text-french-gray block mb-1.5">Edges</span>
+              <div className="flex items-center gap-1">
+                <ToggleButton
+                  active={props.edgeStyle === 'sharp'}
+                  onClick={() => props.onEdgeStyleChange('sharp')}
+                  title="Sharp corners"
+                  className="flex-1 !py-1.5"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="miter"
+                  >
+                    <rect x="2" y="2" width="12" height="12" />
+                  </svg>
+                </ToggleButton>
+                <ToggleButton
+                  active={props.edgeStyle === 'round'}
+                  onClick={() => props.onEdgeStyleChange('round')}
+                  title="Rounded corners"
+                  className="flex-1 !py-1.5"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <rect x="2" y="2" width="12" height="12" rx="3" />
+                  </svg>
+                </ToggleButton>
+              </div>
+            </div>
+          )}
 
-          <Divider />
+          {/* Opacity */}
+          <div>
+            <span className="text-[10px] text-french-gray block mb-1.5">Opacity</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={props.opacity}
+                onChange={(e) => props.onOpacityChange(Number(e.target.value))}
+                className="flex-1 h-1 accent-indigo"
+              />
+              <span className="text-[10px] text-french-gray w-8 text-right">{props.opacity}</span>
+            </div>
+          </div>
 
-          {/* Font family */}
-          <span className="text-[10px] text-french-gray">Font</span>
-          <select
-            value={props.fontFamily}
-            onChange={(e) => props.onFontFamilyChange(e.target.value as FontFamily)}
-            className="text-xs border border-gray-200 rounded px-1 py-1"
-            style={{ fontFamily: FONT_FAMILY_CSS[props.fontFamily] }}
-            title="Font family"
-          >
-            {fontFamilyOptions.map((f) => (
-              <option key={f} value={f} style={{ fontFamily: FONT_FAMILY_CSS[f] }}>
-                {FONT_FAMILY_LABELS[f]}
-              </option>
-            ))}
-          </select>
-
-          <Divider />
-
-          {/* Font size */}
-          <span className="text-[10px] text-french-gray">Size</span>
-          <select
-            value={props.fontSize}
-            onChange={(e) => props.onFontSizeChange(Number(e.target.value))}
-            className="text-xs border border-gray-200 rounded px-1 py-1 w-14"
-            title="Font size"
-          >
-            {FONT_SIZES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-
-          <Divider />
-
-          {/* Text align */}
-          <div className="flex items-center gap-0.5">
-            {textAligns.map((a) => (
-              <ToggleButton
-                key={a.value}
-                active={props.textAlign === a.value}
-                onClick={() => props.onTextAlignChange(a.value)}
-                title={a.label}
+          {/* Layers */}
+          <div>
+            <span className="text-[10px] text-french-gray block mb-1.5">Layers</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => props.onReorder('back')}
+                className="flex-1 h-8 flex items-center justify-center rounded-lg text-xs hover:bg-gray-100 border border-gray-200"
+                title="Send to back"
               >
-                {a.icon}
-              </ToggleButton>
-            ))}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M8 12V4" />
+                  <path d="M4 10l4 4 4-4" />
+                  <line x1="3" y1="2" x2="13" y2="2" />
+                </svg>
+              </button>
+              <button
+                onClick={() => props.onReorder('backward')}
+                className="flex-1 h-8 flex items-center justify-center rounded-lg text-xs hover:bg-gray-100 border border-gray-200"
+                title="Send backward"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M8 12V4" />
+                  <path d="M5 9l3 3 3-3" />
+                </svg>
+              </button>
+              <button
+                onClick={() => props.onReorder('forward')}
+                className="flex-1 h-8 flex items-center justify-center rounded-lg text-xs hover:bg-gray-100 border border-gray-200"
+                title="Bring forward"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M8 4v8" />
+                  <path d="M5 7l3-3 3 3" />
+                </svg>
+              </button>
+              <button
+                onClick={() => props.onReorder('front')}
+                className="flex-1 h-8 flex items-center justify-center rounded-lg text-xs hover:bg-gray-100 border border-gray-200"
+                title="Bring to front"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M8 4v8" />
+                  <path d="M4 6l4-4 4 4" />
+                  <line x1="3" y1="14" x2="13" y2="14" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Frame label (shown when a frame is selected) */}
-      {props.selectedFrameLabel !== undefined && (
-        <div className="bg-white rounded-lg shadow-lg flex items-center gap-2 px-3 py-1.5">
-          <span className="text-[10px] text-french-gray">Label</span>
-          <input
-            type="text"
-            value={props.selectedFrameLabel}
-            onChange={(e) => props.onFrameLabelChange(e.target.value)}
-            className="text-xs border border-gray-200 rounded px-2 py-1 w-32"
-            placeholder="Frame name"
-          />
-        </div>
-      )}
-
-      {/* Layer controls (shown when shapes are selected) */}
-      {props.hasSelection && (
-        <div className="bg-white rounded-lg shadow-lg flex items-center gap-1 px-2 py-1">
-          <span className="text-[10px] text-french-gray mr-1">Layers</span>
-          <button
-            onClick={() => props.onReorder('back')}
-            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
-            title="Send to back"
-          >
-            ⇊
-          </button>
-          <button
-            onClick={() => props.onReorder('backward')}
-            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
-            title="Send backward"
-          >
-            ↓
-          </button>
-          <button
-            onClick={() => props.onReorder('forward')}
-            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
-            title="Bring forward"
-          >
-            ↑
-          </button>
-          <button
-            onClick={() => props.onReorder('front')}
-            className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-gray-100"
-            title="Bring to front"
-          >
-            ⇈
-          </button>
-        </div>
-      )}
-    </div>
+    </>
   )
 }

@@ -7,13 +7,14 @@ export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'in_
 
 export const taskPriorityEnum = pgEnum('task_priority', ['urgent', 'high', 'medium', 'low'])
 
+export const taskLevelEnum = pgEnum('task_level', ['project', 'team', 'company'])
+
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: varchar('title', { length: 255 }).notNull(),
   description: jsonb('description'),
-  projectId: uuid('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
+  level: taskLevelEnum('level').notNull().default('project'),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   assigneeId: uuid('assignee_id').references(() => users.id),
   reporterId: uuid('reporter_id')
     .notNull()

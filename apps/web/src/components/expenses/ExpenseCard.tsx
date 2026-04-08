@@ -6,15 +6,26 @@ import {
   CATEGORY_COLORS,
   STATUS_LABELS,
   STATUS_COLORS,
+  FREQUENCY_LABELS,
 } from '@/lib/expense-helpers'
 import type { Expense } from '@sentral/shared/types/expense'
-import { Calendar, Tag, Building2, Pencil, Trash2, ClipboardCheck } from 'lucide-react'
+import {
+  Calendar,
+  Tag,
+  Building2,
+  Pencil,
+  Trash2,
+  ClipboardCheck,
+  Repeat,
+  User,
+} from 'lucide-react'
 import { FileAttachments } from '@/components/files/FileAttachments'
 
 interface ExpenseCardProps {
   expense: Expense
   isOwner: boolean
   isManager: boolean
+  userName?: string
   onEdit: (expense: Expense) => void
   onDelete: (id: string) => void
   onReview: (expense: Expense) => void
@@ -24,6 +35,7 @@ export function ExpenseCard({
   expense,
   isOwner,
   isManager,
+  userName,
   onEdit,
   onDelete,
   onReview,
@@ -62,10 +74,22 @@ export function ExpenseCard({
               <Calendar size={11} />
               {expense.date}
             </span>
+            {expense.frequency && expense.frequency !== 'one_time' && (
+              <span className="inline-flex items-center gap-1 text-indigo">
+                <Repeat size={11} />
+                {FREQUENCY_LABELS[expense.frequency]}
+              </span>
+            )}
             {expense.vendor && (
               <span className="inline-flex items-center gap-1">
                 <Building2 size={11} />
                 {expense.vendor}
+              </span>
+            )}
+            {userName && (
+              <span className="inline-flex items-center gap-1">
+                <User size={11} />
+                {userName}
               </span>
             )}
             {expense.taxDeductible && <span className="text-teal">Tax deductible</span>}

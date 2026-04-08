@@ -32,6 +32,11 @@ interface AssetOption {
   name: string
 }
 
+interface UserOption {
+  id: string
+  name: string
+}
+
 type Tab = 'expenses' | 'budgets' | 'reports'
 
 export default function ExpensesPage() {
@@ -54,6 +59,7 @@ export default function ExpensesPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [assets, setAssets] = useState<AssetOption[]>([])
+  const [users, setUsers] = useState<UserOption[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('expenses')
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -65,14 +71,16 @@ export default function ExpensesPage() {
   useEffect(() => {
     const loadDropdownData = async () => {
       try {
-        const [projectsData, clientsData, assetsData] = await Promise.all([
+        const [projectsData, clientsData, assetsData, usersData] = await Promise.all([
           api.get<{ projects: Project[] }>('/projects'),
           api.get<{ clients: Client[] }>('/clients'),
           api.get<{ assets: AssetOption[] }>('/assets?limit=100'),
+          api.get<{ users: UserOption[] }>('/assignments/users'),
         ])
         setProjects(projectsData.projects)
         setClients(clientsData.clients)
         setAssets(assetsData.assets)
+        setUsers(usersData.users)
       } catch {
         // Dropdowns are optional
       }
@@ -200,6 +208,7 @@ export default function ExpensesPage() {
               clients={clients}
               budgets={budgets}
               assets={assets}
+              users={users}
               initialValues={editingExpense ?? undefined}
               isSubmitting={isSubmitting}
             />
@@ -210,6 +219,7 @@ export default function ExpensesPage() {
             isLoading={isLoading}
             userId={user?.id ?? ''}
             userRole={user?.role ?? 'member'}
+            users={users}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onReview={handleReview}

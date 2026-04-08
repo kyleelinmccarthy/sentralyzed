@@ -25,14 +25,39 @@ const gradients: Record<string, string> = {
   '#FF7043': 'linear-gradient(135deg, #FF7043, #F59E0B)',
 }
 
+interface Goal {
+  id: string
+  title: string
+}
+
+const PROJECT_COLORS = [
+  '#5C6BC0',
+  '#3B82F6',
+  '#26A69A',
+  '#FF7043',
+  '#8B5CF6',
+  '#EC4899',
+  '#F59E0B',
+  '#10B981',
+]
+const PROJECT_ICONS = ['◈', '◆', '●', '★', '▲', '■', '♦', '⬟', '⬡', '◉']
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [status, setStatus] = useState<Project['status']>('active')
+  const [priority, setPriority] = useState(0)
+  const [goalId, setGoalId] = useState('')
+  const [color, setColor] = useState('#5C6BC0')
+  const [icon, setIcon] = useState('◈')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     void loadProjects()
+    void loadGoals()
   }, [])
 
   const loadProjects = async () => {
@@ -44,10 +69,33 @@ export default function ProjectsPage() {
     }
   }
 
+  const loadGoals = async () => {
+    try {
+      const data = await api.get<{ goals: Goal[] }>('/goals')
+      setGoals(data.goals)
+    } catch {
+      // optional
+    }
+  }
+
   const createProject = async () => {
     if (!name.trim()) return
-    await api.post('/projects', { name })
+    await api.post('/projects', {
+      name: name.trim(),
+      ...(description.trim() && { description: description.trim() }),
+      status,
+      priority,
+      ...(goalId && { goalId }),
+      color,
+      icon,
+    })
     setName('')
+    setDescription('')
+    setStatus('active')
+    setPriority(0)
+    setGoalId('')
+    setColor('#5C6BC0')
+    setIcon('◈')
     setShowForm(false)
     void loadProjects()
   }
@@ -71,14 +119,108 @@ export default function ProjectsPage() {
 
       {showForm ? (
         <Card className="p-4 mb-6">
-          <div className="flex gap-3">
+          <div className="space-y-3">
             <Input
-              placeholder="Project name"
+              placeholder="Project name *"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1"
             />
-            <Button onClick={() => void createProject()}>Create</Button>
+            <textarea
+              placeholder="Description (optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none focus:outline-none focus:ring-2 focus:ring-indigo/30"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as Project['status'])}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value={0}>None</option>
+                  <option value={1}>Low</option>
+                  <option value={2}>Medium</option>
+                  <option value={3}>High</option>
+                </select>
+              </div>
+              {goals.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                    Goal (optional)
+                  </label>
+                  <select
+                    value={goalId}
+                    onChange={(e) => setGoalId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-card text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                  >
+                    <option value="">No goal</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Color
+                </label>
+                <div className="flex gap-2">
+                  {PROJECT_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${color === c ? 'border-jet dark:border-white scale-110' : 'border-transparent'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Icon
+                </label>
+                <div className="flex gap-1.5">
+                  {PROJECT_ICONS.map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setIcon(i)}
+                      className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center border transition-all ${icon === i ? 'border-indigo bg-indigo/10' : 'border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover'}`}
+                    >
+                      {i}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => void createProject()}>Create Project</Button>
+            </div>
           </div>
         </Card>
       ) : null}

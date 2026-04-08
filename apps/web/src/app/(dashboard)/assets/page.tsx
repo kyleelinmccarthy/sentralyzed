@@ -21,6 +21,11 @@ interface Client {
   name: string
 }
 
+interface TeamMember {
+  id: string
+  name: string
+}
+
 const statusColors: Record<AssetStatus, string> = {
   available: 'bg-teal/15 text-teal dark:text-teal',
   in_use: 'bg-indigo/15 text-indigo dark:text-indigo',
@@ -55,20 +60,28 @@ export default function AssetsPage() {
   const [description, setDescription] = useState('')
   const [projectId, setProjectId] = useState('')
   const [clientId, setClientId] = useState('')
+  const [assetStatus, setAssetStatus] = useState<AssetStatus>('available')
+  const [purchaseDate, setPurchaseDate] = useState('')
+  const [warrantyExpiresAt, setWarrantyExpiresAt] = useState('')
+  const [assignedToId, setAssignedToId] = useState('')
+  const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
 
   useEffect(() => {
     const loadDropdownData = async () => {
       try {
-        const [projectsData, clientsData] = await Promise.all([
+        const [projectsData, clientsData, usersData] = await Promise.all([
           api.get<{ projects: Project[] }>('/projects'),
           api.get<{ clients: Client[] }>('/clients'),
+          api.get<{ users: TeamMember[] }>('/assignments/users'),
         ])
         setProjects(projectsData.projects)
         setClients(clientsData.clients)
+        setTeamMembers(usersData.users)
       } catch {
         // Dropdowns are optional
       }
@@ -87,6 +100,7 @@ export default function AssetsPage() {
       await createAsset({
         name: name.trim(),
         category,
+        status: assetStatus,
         ...(serialNumber && { serialNumber: serialNumber.trim() }),
         ...(purchaseCostCents && {
           purchaseCostCents: Math.round(parseFloat(purchaseCostCents) * 100),
@@ -94,14 +108,23 @@ export default function AssetsPage() {
         ...(description && { description: description.trim() }),
         ...(projectId && { projectId }),
         ...(clientId && { clientId }),
+        ...(purchaseDate && { purchaseDate }),
+        ...(warrantyExpiresAt && { warrantyExpiresAt: new Date(warrantyExpiresAt).toISOString() }),
+        ...(assignedToId && { assignedToId }),
+        ...(notes.trim() && { notes: notes.trim() }),
       })
       setName('')
       setCategory('laptop')
+      setAssetStatus('available')
       setSerialNumber('')
       setPurchaseCostCents('')
       setDescription('')
       setProjectId('')
       setClientId('')
+      setPurchaseDate('')
+      setWarrantyExpiresAt('')
+      setAssignedToId('')
+      setNotes('')
       setShowForm(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create asset')
@@ -177,32 +200,102 @@ export default function AssetsPage() {
               onChange={(e) => setName(e.target.value)}
             />
             <div className="grid grid-cols-3 gap-3">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as AssetCategory)}
-                className="px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text"
-              >
-                {ASSET_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {categoryLabels[cat]}
-                  </option>
-                ))}
-              </select>
-              <Input
-                placeholder="Serial number"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-              />
-              <Input
-                placeholder="Purchase cost ($)"
-                type="number"
-                step="0.01"
-                min="0"
-                value={purchaseCostCents}
-                onChange={(e) => setPurchaseCostCents(e.target.value)}
-              />
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as AssetCategory)}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  {ASSET_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {categoryLabels[cat]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Status
+                </label>
+                <select
+                  value={assetStatus}
+                  onChange={(e) => setAssetStatus(e.target.value as AssetStatus)}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  {ASSET_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Serial Number (optional)
+                </label>
+                <Input
+                  placeholder="Serial number"
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Purchase Cost ($, optional)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={purchaseCostCents}
+                  onChange={(e) => setPurchaseCostCents(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Purchase Date (optional)
+                </label>
+                <Input
+                  type="date"
+                  value={purchaseDate}
+                  onChange={(e) => setPurchaseDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Warranty Expires (optional)
+                </label>
+                <Input
+                  type="date"
+                  value={warrantyExpiresAt}
+                  onChange={(e) => setWarrantyExpiresAt(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Assigned To (optional)
+                </label>
+                <select
+                  value={assignedToId}
+                  onChange={(e) => setAssignedToId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {projects.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
@@ -211,7 +304,7 @@ export default function AssetsPage() {
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text"
+                    className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
                   >
                     <option value="">No project</option>
                     {projects.map((p) => (
@@ -230,7 +323,7 @@ export default function AssetsPage() {
                   <select
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text"
+                    className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
                   >
                     <option value="">No client</option>
                     {clients.map((c) => (
@@ -247,7 +340,14 @@ export default function AssetsPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none focus:outline-none focus:ring-2 focus:ring-indigo/30"
+            />
+            <textarea
+              placeholder="Notes (optional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-sm text-jet dark:text-dark-text placeholder:text-french-gray dark:placeholder:text-dark-text-secondary resize-none focus:outline-none focus:ring-2 focus:ring-indigo/30"
             />
             <div className="flex justify-end">
               <Button onClick={() => void handleCreate()} disabled={saving}>

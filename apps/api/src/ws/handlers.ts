@@ -195,21 +195,10 @@ function broadcastWhiteboardPresence(whiteboardId: string) {
 
 function handleWhiteboardJoin(connId: string, userId: string, userName: string, payload: unknown) {
   const parsed = whiteboardJoinPayloadSchema.safeParse(payload)
-  if (!parsed.success) {
-    console.log(
-      '[wb] join validation failed:',
-      whiteboardJoinPayloadSchema.safeParse(payload).error?.message,
-    )
-    return
-  }
+  if (!parsed.success) return
 
   const { whiteboardId } = parsed.data
   joinWhiteboardRoom(whiteboardId, connId, userId, userName)
-  const members = getWhiteboardRoomMembers(whiteboardId)
-  console.log(
-    `[wb] ${userName} joined ${whiteboardId} — room now has:`,
-    members.map((m) => m.userName),
-  )
   broadcastWhiteboardPresence(whiteboardId)
 }
 

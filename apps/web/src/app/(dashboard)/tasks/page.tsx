@@ -14,13 +14,21 @@ interface Project {
   color: string
 }
 
+interface TeamMember {
+  id: string
+  name: string
+}
+
+type TaskLevel = 'project' | 'team' | 'company'
+
 interface Task {
   id: string
   title: string
   status: 'todo' | 'in_progress' | 'in_review' | 'done'
   priority: 'urgent' | 'high' | 'medium' | 'low'
   dueDate: string | null
-  projectId: string
+  level: TaskLevel
+  projectId: string | null
   assigneeId: string | null
   createdAt: string
 }
@@ -56,17 +64,23 @@ export default function TasksPage() {
   const [editDueDate, setEditDueDate] = useState('')
 
   const [title, setTitle] = useState('')
+  const [level, setLevel] = useState<TaskLevel>('project')
   const [projectId, setProjectId] = useState('')
   const [priority, setPriority] = useState<'medium' | 'urgent' | 'high' | 'low'>('medium')
+  const [status, setStatus] = useState<Task['status']>('todo')
+  const [dueDate, setDueDate] = useState('')
+  const [assigneeId, setAssigneeId] = useState('')
+  const [estimatedHours, setEstimatedHours] = useState('')
+  const [labels, setLabels] = useState('')
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
 
   useEffect(() => {
     void loadProjects()
+    void loadTeamMembers()
   }, [])
 
   useEffect(() => {
-    if (projects.length > 0) {
-      void loadAllTasks()
-    }
+    void loadAllTasks()
   }, [projects])
 
   const loadProjects = async () => {
@@ -78,14 +92,30 @@ export default function TasksPage() {
     }
   }
 
+  const loadTeamMembers = async () => {
+    try {
+      const data = await api.get<{ users: TeamMember[] }>('/assignments/users')
+      setTeamMembers(data.users)
+    } catch {
+      // ignore
+    }
+  }
+
   const loadAllTasks = async () => {
     setIsLoading(true)
     try {
       const allTasks: Task[] = []
+      // Fetch project tasks
       for (const project of projects) {
         const data = await api.get<{ tasks: Task[] }>(`/tasks/project/${project.id}`)
         allTasks.push(...data.tasks)
       }
+      // Fetch team and company tasks
+      const [teamData, companyData] = await Promise.all([
+        api.get<{ tasks: Task[] }>('/tasks/level/team'),
+        api.get<{ tasks: Task[] }>('/tasks/level/company'),
+      ])
+      allTasks.push(...teamData.tasks, ...companyData.tasks)
       setTasks(allTasks)
     } catch {
       // ignore
@@ -95,13 +125,36 @@ export default function TasksPage() {
   }
 
   const handleCreate = async () => {
-    if (!title.trim() || !projectId) return
+    if (!title.trim()) return
+    if (level === 'project' && !projectId) return
     setCreating(true)
     try {
-      await api.post('/tasks', { title: title.trim(), projectId, priority })
+      const parsedLabels = labels.trim()
+        ? labels
+            .split(',')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        : undefined
+      await api.post('/tasks', {
+        title: title.trim(),
+        level,
+        ...(level === 'project' ? { projectId } : {}),
+        priority,
+        status,
+        ...(dueDate && { dueDate }),
+        ...(assigneeId && { assigneeId }),
+        ...(estimatedHours && { estimatedHours: Number(estimatedHours) }),
+        ...(parsedLabels?.length && { labels: parsedLabels }),
+      })
       setTitle('')
+      setLevel('project')
       setProjectId('')
       setPriority('medium')
+      setStatus('todo')
+      setDueDate('')
+      setAssigneeId('')
+      setEstimatedHours('')
+      setLabels('')
       setShowForm(false)
       void loadAllTasks()
     } finally {
@@ -133,7 +186,16 @@ export default function TasksPage() {
   const completedTasks = tasks.filter((t) => t.status === 'done')
   const displayedTasks = filter === 'active' ? activeTasks : completedTasks
 
-  const getProjectName = (id: string) => projects.find((p) => p.id === id)?.name ?? 'Unknown'
+  const getProjectName = (id: string | null) => {
+    if (!id) return null
+    return projects.find((p) => p.id === id)?.name ?? 'Unknown'
+  }
+
+  const getLevelLabel = (task: Task) => {
+    if (task.level === 'company') return 'Company'
+    if (task.level === 'team') return 'Team'
+    return getProjectName(task.projectId)
+  }
 
   return (
     <div>
@@ -148,36 +210,133 @@ export default function TasksPage() {
         <Card className="p-4 mb-6">
           <div className="space-y-3">
             <Input
-              placeholder="Task title"
+              placeholder="Task title *"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
             />
-            <div className="flex gap-3">
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="flex-1 rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
-              >
-                <option value="">Select project...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as typeof priority)}
-                className="rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Level
+                </label>
+                <select
+                  value={level}
+                  onChange={(e) => {
+                    setLevel(e.target.value as TaskLevel)
+                    if (e.target.value !== 'project') setProjectId('')
+                  }}
+                  className="w-full rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="project">Project</option>
+                  <option value="team">Team</option>
+                  <option value="company">Company</option>
+                </select>
+              </div>
+              {level === 'project' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                    Project *
+                  </label>
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                  >
+                    <option value="">Select project...</option>
+                    {[...projects]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as Task['status'])}
+                  className="w-full rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="in_review">In Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as typeof priority)}
+                  className="w-full rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Assignee (optional)
+                </label>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="w-full rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo/30"
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Due Date (optional)
+                </label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Estimated Hours (optional)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="e.g. 4"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-gray dark:text-dark-text-secondary mb-1">
+                  Labels (optional, comma-separated)
+                </label>
+                <Input
+                  placeholder="e.g. frontend, bug, urgent"
+                  value={labels}
+                  onChange={(e) => setLabels(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
               <Button size="sm" onClick={() => void handleCreate()} isLoading={creating}>
-                Create
+                Create Task
               </Button>
             </div>
           </div>
@@ -225,7 +384,7 @@ export default function TasksPage() {
                       {task.title}
                     </p>
                     <p className="text-xs text-french-gray dark:text-dark-text-secondary">
-                      {getProjectName(task.projectId)} · {statusLabels[task.status]}
+                      {getLevelLabel(task)} · {statusLabels[task.status]}
                       {task.dueDate && ` · Due ${new Date(task.dueDate).toLocaleDateString()}`}
                     </p>
                   </div>
@@ -248,19 +407,19 @@ export default function TasksPage() {
                             onChange={(e) => setEditStatus(e.target.value as Task['status'])}
                             className="flex-1 rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
                           >
-                            <option value="todo">To Do</option>
+                            <option value="done">Done</option>
                             <option value="in_progress">In Progress</option>
                             <option value="in_review">In Review</option>
-                            <option value="done">Done</option>
+                            <option value="todo">To Do</option>
                           </select>
                           <select
                             value={editPriority}
                             onChange={(e) => setEditPriority(e.target.value as Task['priority'])}
                             className="rounded-lg border border-light-border dark:border-dark-border px-3 py-2 text-sm bg-light-surface dark:bg-dark-card text-jet dark:text-dark-text"
                           >
+                            <option value="high">High</option>
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
-                            <option value="high">High</option>
                             <option value="urgent">Urgent</option>
                           </select>
                           <div className="flex items-center gap-2">

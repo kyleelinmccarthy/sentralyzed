@@ -22,8 +22,10 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
   'education_training',
   'equipment',
   'insurance',
+  'legal',
   'meals',
   'office_supplies',
+  'operating',
   'professional_services',
   'rent_lease',
   'software_subscriptions',
@@ -35,6 +37,13 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
 ])
 
 export const expenseStatusEnum = pgEnum('expense_status', ['pending', 'approved', 'rejected'])
+
+export const expenseFrequencyEnum = pgEnum('expense_frequency', [
+  'one_time',
+  'monthly',
+  'quarterly',
+  'annually',
+])
 
 export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly', 'yearly'])
 
@@ -65,6 +74,8 @@ export const expenses = pgTable('expenses', {
   clientId: uuid('client_id').references(() => clients.id),
   budgetId: uuid('budget_id').references(() => budgets.id),
   assetId: uuid('asset_id').references(() => assets.id),
+  userId: uuid('user_id').references(() => users.id),
+  frequency: expenseFrequencyEnum('frequency').notNull().default('one_time'),
   taxDeductible: boolean('tax_deductible').notNull().default(true),
   date: date('date').notNull(),
   vendor: varchar('vendor', { length: 255 }),

@@ -2,11 +2,17 @@ import { ExpenseCard } from './ExpenseCard'
 import { Button } from '@/components/ui/button'
 import type { Expense } from '@sentral/shared/types/expense'
 
+interface UserOption {
+  id: string
+  name: string
+}
+
 interface ExpenseListProps {
   expenses: Expense[]
   isLoading: boolean
   userId: string
   userRole: string
+  users: UserOption[]
   onEdit: (expense: Expense) => void
   onDelete: (id: string) => void
   onReview: (expense: Expense) => void
@@ -19,6 +25,7 @@ export function ExpenseList({
   isLoading,
   userId,
   userRole,
+  users,
   onEdit,
   onDelete,
   onReview,
@@ -26,6 +33,7 @@ export function ExpenseList({
   onPageChange,
 }: ExpenseListProps) {
   const isManager = userRole === 'admin' || userRole === 'manager'
+  const userMap = new Map(users.map((u) => [u.id, u.name]))
 
   if (isLoading) {
     return (
@@ -54,6 +62,7 @@ export function ExpenseList({
             expense={expense}
             isOwner={expense.submittedBy === userId}
             isManager={isManager}
+            userName={expense.userId ? userMap.get(expense.userId) : undefined}
             onEdit={onEdit}
             onDelete={onDelete}
             onReview={onReview}

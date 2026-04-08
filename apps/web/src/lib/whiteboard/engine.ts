@@ -11,6 +11,8 @@ export type ShapeType =
   | 'embed'
 export type ToolType = ShapeType | 'select' | 'eraser' | 'hand' | 'laser'
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted'
+export type Sloppiness = 0 | 1 | 2 // 0 = architect (precise), 1 = artist (moderate), 2 = cartoonist (sloppy)
+export type EdgeStyle = 'sharp' | 'round'
 export type FontFamily =
   | 'arial'
   | 'helvetica'
@@ -46,6 +48,8 @@ export interface Shape {
   rotation: number
   opacity: number // 0-100
   strokeStyle: StrokeStyle
+  sloppiness: Sloppiness
+  edgeStyle: EdgeStyle
   fontFamily: FontFamily
   fontSize: FontSize
   textAlign: TextAlign
@@ -125,6 +129,8 @@ const SHAPE_DEFAULTS: Omit<Shape, 'id' | 'type' | 'x' | 'y'> = {
   rotation: 0,
   opacity: 100,
   strokeStyle: 'solid',
+  sloppiness: 0,
+  edgeStyle: 'sharp',
   fontFamily: 'inter',
   fontSize: 16,
   textAlign: 'left',
@@ -461,35 +467,131 @@ export function renderShape(ctx: CanvasRenderingContext2D, shape: Shape) {
   ctx.restore()
 }
 
+// ─── Sloppiness helpers ───
+
+function jitter(sloppiness: Sloppiness): number {
+  if (sloppiness === 0) return 0
+  const magnitude = sloppiness === 1 ? 2 : 5
+  return (Math.random() - 0.5) * magnitude
+}
+
+function drawSloppyLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  sloppiness: Sloppiness,
+) {
+  if (sloppiness === 0) {
+    ctx.lineTo(x2, y2)
+    return
+  }
+  const midX = (x1 + x2) / 2 + jitter(sloppiness) * 2
+  const midY = (y1 + y2) / 2 + jitter(sloppiness) * 2
+  ctx.quadraticCurveTo(midX, midY, x2 + jitter(sloppiness), y2 + jitter(sloppiness))
+}
+
 function renderRectangle(ctx: CanvasRenderingContext2D, shape: Shape) {
-  if (shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
-  ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+  const s = shape.sloppiness ?? 0
+  const r = shape.edgeStyle === 'round' ? Math.min(shape.width, shape.height) * 0.15 : 0
+
+  if (s === 0) {
+    // Precise drawing
+    if (r > 0) {
+      const path = new Path2D()
+      path.roundRect(shape.x, shape.y, shape.width, shape.height, r)
+      if (shape.fill !== 'transparent') ctx.fill(path)
+      ctx.stroke(path)
+    } else {
+      if (shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+    }
+  } else {
+    // Sloppy hand-drawn rectangle
+    const { x, y, width: w, height: h } = shape
+    const corners: [number, number][] = [
+      [x + jitter(s), y + jitter(s)],
+      [x + w + jitter(s), y + jitter(s)],
+      [x + w + jitter(s), y + h + jitter(s)],
+      [x + jitter(s), y + h + jitter(s)],
+    ]
+    ctx.beginPath()
+    ctx.moveTo(corners[0]![0]!, corners[0]![1]!)
+    for (let i = 0; i < 4; i++) {
+      const next = corners[(i + 1) % 4]!
+      drawSloppyLine(ctx, corners[i]![0]!, corners[i]![1]!, next[0]!, next[1]!, s)
+    }
+    ctx.closePath()
+    if (shape.fill !== 'transparent') ctx.fill()
+    ctx.stroke()
+  }
 }
 
 function renderEllipse(ctx: CanvasRenderingContext2D, shape: Shape) {
-  ctx.beginPath()
-  ctx.ellipse(
-    shape.x + shape.width / 2,
-    shape.y + shape.height / 2,
-    Math.abs(shape.width / 2),
-    Math.abs(shape.height / 2),
-    0,
-    0,
-    Math.PI * 2,
-  )
-  if (shape.fill !== 'transparent') ctx.fill()
-  ctx.stroke()
+  const s = shape.sloppiness ?? 0
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2
+  const rx = Math.abs(shape.width / 2)
+  const ry = Math.abs(shape.height / 2)
+
+  if (s === 0) {
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+    if (shape.fill !== 'transparent') ctx.fill()
+    ctx.stroke()
+  } else {
+    // Draw sloppy ellipse with wobble
+    const steps = 36
+    ctx.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * Math.PI * 2
+      const x = cx + rx * Math.cos(angle) + jitter(s)
+      const y = cy + ry * Math.sin(angle) + jitter(s)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    if (shape.fill !== 'transparent') ctx.fill()
+    ctx.stroke()
+  }
 }
 
 function renderDiamond(ctx: CanvasRenderingContext2D, shape: Shape) {
   const cx = shape.x + shape.width / 2
   const cy = shape.y + shape.height / 2
+  const s = shape.sloppiness ?? 0
+  const r = shape.edgeStyle === 'round' ? Math.min(shape.width, shape.height) * 0.1 : 0
+
+  const pts: [number, number][] = [
+    [cx + jitter(s), shape.y + jitter(s)],
+    [shape.x + shape.width + jitter(s), cy + jitter(s)],
+    [cx + jitter(s), shape.y + shape.height + jitter(s)],
+    [shape.x + jitter(s), cy + jitter(s)],
+  ]
+
   ctx.beginPath()
-  ctx.moveTo(cx, shape.y)
-  ctx.lineTo(shape.x + shape.width, cy)
-  ctx.lineTo(cx, shape.y + shape.height)
-  ctx.lineTo(shape.x, cy)
-  ctx.closePath()
+  if (r > 0 && s === 0) {
+    // Rounded diamond
+    ctx.moveTo((pts[0]![0]! + pts[3]![0]!) / 2, (pts[0]![1]! + pts[3]![1]!) / 2)
+    for (let i = 0; i < 4; i++) {
+      const curr = pts[i]!
+      const next = pts[(i + 1) % 4]!
+      ctx.arcTo(curr[0]!, curr[1]!, next[0]!, next[1]!, r)
+    }
+    ctx.closePath()
+  } else {
+    ctx.moveTo(pts[0]![0]!, pts[0]![1]!)
+    for (let i = 0; i < 4; i++) {
+      const next = pts[(i + 1) % 4]!
+      if (s === 0) {
+        ctx.lineTo(next[0]!, next[1]!)
+      } else {
+        drawSloppyLine(ctx, pts[i]![0]!, pts[i]![1]!, next[0]!, next[1]!, s)
+      }
+    }
+    ctx.closePath()
+  }
   if (shape.fill !== 'transparent') ctx.fill()
   ctx.stroke()
 }

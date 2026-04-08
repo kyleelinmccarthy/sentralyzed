@@ -247,7 +247,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Input
-                    placeholder="Email"
+                    placeholder="Email (optional)"
                     type="email"
                     value={editData.email || ''}
                     onChange={(e) => {
@@ -262,7 +262,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div>
                   <Input
-                    placeholder="Phone"
+                    placeholder="Phone (optional)"
                     type="tel"
                     value={editData.phone || ''}
                     onChange={(e) => {
@@ -278,7 +278,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
               <Input
-                placeholder="Company"
+                placeholder="Company (optional)"
                 value={editData.company || ''}
                 onChange={(e) => setEditData({ ...editData, company: e.target.value || null })}
               />

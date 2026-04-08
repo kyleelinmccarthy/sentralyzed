@@ -9,6 +9,7 @@ const defaultProps = {
   clients: [{ id: 'client-1', name: 'Acme Corp' }],
   budgets: [{ id: 'bud-1', name: 'Q2 Marketing' }],
   assets: [{ id: 'asset-1', name: 'MacBook Pro' }],
+  users: [{ id: 'user-1', name: 'John Doe' }],
   isSubmitting: false,
 }
 
@@ -83,6 +84,8 @@ describe('ExpenseForm', () => {
       clientId: null,
       budgetId: null,
       assetId: null,
+      userId: null,
+      frequency: 'one_time' as const,
       taxDeductible: false,
       date: '2026-01-15',
       vendor: 'Airline',

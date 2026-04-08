@@ -56,6 +56,7 @@ export class ExpensesService {
     if (query.clientId) conditions.push(eq(expenses.clientId, query.clientId))
     if (query.budgetId) conditions.push(eq(expenses.budgetId, query.budgetId))
     if (query.assetId) conditions.push(eq(expenses.assetId, query.assetId))
+    if (query.userId) conditions.push(eq(expenses.userId, query.userId))
     if (query.startDate) conditions.push(gte(expenses.date, query.startDate))
     if (query.endDate) conditions.push(lte(expenses.date, query.endDate))
 

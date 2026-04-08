@@ -4,7 +4,8 @@ export interface DashboardTask {
   status: 'todo' | 'in_progress' | 'in_review' | 'done'
   priority: 'urgent' | 'high' | 'medium' | 'low'
   dueDate: string | null
-  projectId: string
+  level: 'project' | 'team' | 'company'
+  projectId: string | null
 }
 
 export interface DashboardEvent {
@@ -39,19 +40,10 @@ export interface DashboardChatNotification {
   unreadCount: number
 }
 
-export interface DashboardAssignment {
-  id: string
-  entityType: string
-  entityId: string
-  role: string | null
-  createdAt: string
-}
-
 export interface MyItemsResponse {
   tasks: DashboardTask[]
   events: DashboardEvent[]
   goals: DashboardGoal[]
   feedbackItems: DashboardFeedback[]
   chatNotifications: DashboardChatNotification[]
-  assignments: DashboardAssignment[]
 }

@@ -71,6 +71,20 @@
       "when": 1775512659565,
       "tag": "0009_motionless_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0010_add_expense_frequency",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775700000000,
+      "tag": "0011_add_expense_user_id",
+      "breakpoints": true
     }
   ]
 }
