@@ -66,16 +66,22 @@ export class EntityLinksService {
 
   private async validateSourceExists(sourceType: SourceType, sourceId: string) {
     const queryKey = SOURCE_QUERIES[sourceType]
-    const entity = await (db.query[queryKey] as any).findFirst({
-      where: (t: any, { eq }: any) => eq(t.id, sourceId),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic Drizzle query table access
+    const queryTable = db.query[queryKey] as any
+    const entity = await queryTable.findFirst({
+      where: (t: { id: unknown }, ops: { eq: (a: unknown, b: string) => unknown }) =>
+        ops.eq(t.id, sourceId),
     })
     if (!entity) throw new EntityNotFoundError(`Source ${sourceType} not found`)
   }
 
   private async validateTargetExists(targetType: TargetType, targetId: string) {
     const queryKey = TARGET_QUERIES[targetType]
-    const entity = await (db.query[queryKey] as any).findFirst({
-      where: (t: any, { eq }: any) => eq(t.id, targetId),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic Drizzle query table access
+    const queryTable = db.query[queryKey] as any
+    const entity = await queryTable.findFirst({
+      where: (t: { id: unknown }, ops: { eq: (a: unknown, b: string) => unknown }) =>
+        ops.eq(t.id, targetId),
     })
     if (!entity) throw new EntityNotFoundError(`Target ${targetType} not found`)
   }

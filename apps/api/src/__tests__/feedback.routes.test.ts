@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
+import type { Context, Next } from 'hono'
 
 // Mock auth middleware — default user is a member
 const mockUser = { id: 'user-1', role: 'member' }
 vi.mock('../middleware/auth.js', () => ({
-  authMiddleware: vi.fn(async (c: any, next: any) => {
+  authMiddleware: vi.fn(async (c: Context, next: Next) => {
     c.set('user', { ...mockUser })
     await next()
   }),
   requireRole:
     (...roles: string[]) =>
-    async (c: any, next: any) => {
+    async (c: Context, next: Next) => {
       const user = c.get('user')
       if (!user) return c.json({ error: 'Unauthorized' }, 401)
       if (!roles.includes(user.role)) return c.json({ error: 'Forbidden' }, 403)

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import type { ZodError } from 'zod'
+import type { Context } from 'hono'
 import {
   createClientSchema,
   updateClientSchema,
@@ -9,8 +10,9 @@ import {
 import { authMiddleware } from '../../middleware/auth.js'
 import { clientsService } from '../../services/clients.service.js'
 import type { AppEnv } from '../../types.js'
+import type { ClientProjectRole } from '@sentral/shared/types/client'
 
-const validationHook = (result: { success: boolean; error?: ZodError }, c: any) => {
+const validationHook = (result: { success: boolean; error?: ZodError }, c: Context) => {
   if (!result.success) {
     const messages = result.error!.issues.map((i) => i.message).join(', ')
     return c.json({ error: messages }, 400)
@@ -67,7 +69,7 @@ clientsRouter.post(
     const clientProject = await clientsService.addProject(
       c.req.param('id'),
       projectId,
-      role as any,
+      role as ClientProjectRole,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
     )

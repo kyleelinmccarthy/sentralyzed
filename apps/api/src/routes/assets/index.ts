@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import type { ZodError } from 'zod'
+import type { Context } from 'hono'
 import {
   createAssetSchema,
   updateAssetSchema,
@@ -10,7 +11,7 @@ import { authMiddleware } from '../../middleware/auth.js'
 import { assetsService } from '../../services/assets.service.js'
 import type { AppEnv } from '../../types.js'
 
-const validationHook = (result: { success: boolean; error?: ZodError }, c: any) => {
+const validationHook = (result: { success: boolean; error?: ZodError }, c: Context) => {
   if (!result.success) {
     const messages = result.error!.issues.map((i) => i.message).join(', ')
     return c.json({ error: messages }, 400)

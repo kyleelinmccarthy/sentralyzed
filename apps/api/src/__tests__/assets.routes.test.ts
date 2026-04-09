@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
+import type { Context, Next } from 'hono'
 
 // Mock auth middleware to inject a test user
 vi.mock('../middleware/auth.js', () => ({
-  authMiddleware: vi.fn(async (c: any, next: any) => {
+  authMiddleware: vi.fn(async (c: Context, next: Next) => {
     c.set('user', { id: 'user-1', role: 'admin' })
     await next()
   }),

@@ -1,12 +1,11 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { users } from '../schema/users.js'
 import { goals } from '../schema/goals.js'
 import { projects, projectMembers } from '../schema/projects.js'
 import { tasks } from '../schema/tasks.js'
 import { clients } from '../schema/clients.js'
-import { expenses } from '../schema/expenses.js'
 import { assets } from '../schema/assets.js'
 import { entityAssignments } from '../schema/assignments.js'
 
@@ -245,7 +244,7 @@ async function seedData() {
   // EXPENSES
   // ──────────────────────────────────────
   console.log('Creating expenses...')
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]!
   // Use raw SQL to avoid Drizzle trying to insert user_id column that doesn't exist in DB yet
   const expenseRows = [
     {
@@ -317,7 +316,7 @@ async function seedData() {
   for (const row of expenseRows) {
     const result = await client`
       INSERT INTO expenses (description, amount_cents, category, frequency, date, submitted_by, status, notes)
-      VALUES (${row.desc}, ${row.cents}, ${row.cat}::expense_category, ${row.freq}::expense_frequency, ${today}, ${a1}, 'approved'::expense_status, ${row.notes})
+      VALUES (${row.desc}, ${row.cents}, ${row.cat}::expense_category, ${row.freq}::expense_frequency, ${today}, ${a1}, 'approved'::expense_status, ${row.notes ?? null})
       RETURNING id
     `
     insertedExpenses.push(result[0])
