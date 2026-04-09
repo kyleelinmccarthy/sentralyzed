@@ -390,10 +390,10 @@ describe('text shape properties', () => {
     expect(fontSizeToPx(16)).toBe(16)
     expect(fontSizeToPx(24)).toBe(24)
     // Legacy string sizes
-    expect(fontSizeToPx('S' as any)).toBe(16)
-    expect(fontSizeToPx('M' as any)).toBe(20)
-    expect(fontSizeToPx('L' as any)).toBe(28)
-    expect(fontSizeToPx('XL' as any)).toBe(40)
+    expect(fontSizeToPx('S')).toBe(16)
+    expect(fontSizeToPx('M')).toBe(20)
+    expect(fontSizeToPx('L')).toBe(28)
+    expect(fontSizeToPx('XL')).toBe(40)
   })
 
   it('FONT_SIZES contains standard sizes', () => {
