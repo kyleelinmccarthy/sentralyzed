@@ -16,6 +16,7 @@ const COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 7 * 24 * 60 * 60, // 7 days
+  ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
 }
 
 const auth = new Hono<AppEnv>()

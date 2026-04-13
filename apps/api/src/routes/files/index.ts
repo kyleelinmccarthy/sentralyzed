@@ -42,7 +42,8 @@ filesRouter.post('/upload', async (c) => {
 filesRouter.get('/:id', async (c) => {
   try {
     const { data, metadata } = await filesService.download(c.req.param('id'))
-    return new Response(data, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Buffer is valid BodyInit at runtime
+    return new Response(data as any, {
       headers: {
         'Content-Type': metadata.mimeType,
         'Content-Disposition': `attachment; filename="${metadata.originalName}"`,

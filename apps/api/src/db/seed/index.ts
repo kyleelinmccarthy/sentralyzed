@@ -1,14 +1,12 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
 import { users } from '../schema/users.js'
 import { hash } from '../../lib/auth.js'
 import { eq } from 'drizzle-orm'
 
 async function seed() {
-  const connectionString =
-    process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev'
-  const client = postgres(connectionString)
-  const db = drizzle(client)
+  const sql = neon(process.env.DATABASE_URL!)
+  const db = drizzle(sql)
 
   console.log('Seeding database...')
 
@@ -65,7 +63,6 @@ async function seed() {
   }
 
   console.log('Seed complete!')
-  await client.end()
 }
 
 seed().catch(console.error)

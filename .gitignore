@@ -34,3 +34,5 @@ redis_data/
 
 # Backups
 backups/
+.vercel
+.env*.local

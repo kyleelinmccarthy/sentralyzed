@@ -4,13 +4,28 @@ CREATE TYPE "public"."goal_level" AS ENUM('company', 'team', 'personal');--> sta
 CREATE TYPE "public"."goal_status" AS ENUM('not_started', 'in_progress', 'completed', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."project_member_role" AS ENUM('lead', 'contributor', 'viewer');--> statement-breakpoint
 CREATE TYPE "public"."project_status" AS ENUM('active', 'paused', 'completed', 'archived');--> statement-breakpoint
+CREATE TYPE "public"."task_level" AS ENUM('project', 'team', 'company');--> statement-breakpoint
 CREATE TYPE "public"."task_priority" AS ENUM('urgent', 'high', 'medium', 'low');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('todo', 'in_progress', 'in_review', 'done');--> statement-breakpoint
 CREATE TYPE "public"."activity_action" AS ENUM('created', 'updated', 'deleted', 'commented', 'assigned', 'completed');--> statement-breakpoint
 CREATE TYPE "public"."channel_type" AS ENUM('public', 'private', 'direct');--> statement-breakpoint
 CREATE TYPE "public"."whiteboard_permission" AS ENUM('edit', 'view');--> statement-breakpoint
+CREATE TYPE "public"."attendee_requirement" AS ENUM('required', 'optional');--> statement-breakpoint
 CREATE TYPE "public"."rsvp_status" AS ENUM('pending', 'accepted', 'declined');--> statement-breakpoint
-CREATE TYPE "public"."poll_context_type" AS ENUM('channel', 'forum');--> statement-breakpoint
+CREATE TYPE "public"."feedback_category" AS ENUM('bug', 'feature_request', 'improvement', 'question', 'other');--> statement-breakpoint
+CREATE TYPE "public"."feedback_priority" AS ENUM('low', 'medium', 'high', 'critical');--> statement-breakpoint
+CREATE TYPE "public"."feedback_status" AS ENUM('open', 'in_review', 'resolved', 'closed');--> statement-breakpoint
+CREATE TYPE "public"."poll_context_type" AS ENUM('channel', 'forum', 'project', 'goal', 'task', 'client', 'expense', 'calendar', 'user', 'whiteboard', 'feedback', 'asset');--> statement-breakpoint
+CREATE TYPE "public"."client_project_role" AS ENUM('sponsor', 'stakeholder', 'end_user');--> statement-breakpoint
+CREATE TYPE "public"."client_status" AS ENUM('lead', 'active', 'inactive', 'churned');--> statement-breakpoint
+CREATE TYPE "public"."budget_period" AS ENUM('monthly', 'quarterly', 'yearly');--> statement-breakpoint
+CREATE TYPE "public"."expense_category" AS ENUM('advertising', 'bank_fees', 'contract_labor', 'education_training', 'equipment', 'insurance', 'legal', 'meals', 'office_supplies', 'operating', 'professional_services', 'rent_lease', 'software_subscriptions', 'taxes_licenses', 'travel', 'utilities', 'wages', 'other');--> statement-breakpoint
+CREATE TYPE "public"."expense_frequency" AS ENUM('one_time', 'monthly', 'quarterly', 'annually');--> statement-breakpoint
+CREATE TYPE "public"."expense_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
+CREATE TYPE "public"."asset_category" AS ENUM('laptop', 'monitor', 'phone', 'tablet', 'peripheral', 'furniture', 'vehicle', 'software_license', 'equipment', 'other');--> statement-breakpoint
+CREATE TYPE "public"."asset_status" AS ENUM('available', 'in_use', 'maintenance', 'retired');--> statement-breakpoint
+CREATE TYPE "public"."calendar_view" AS ENUM('week', 'month');--> statement-breakpoint
+CREATE TYPE "public"."email_digest" AS ENUM('off', 'daily', 'weekly');--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" varchar(255) NOT NULL,
@@ -98,7 +113,8 @@ CREATE TABLE "tasks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" varchar(255) NOT NULL,
 	"description" jsonb,
-	"project_id" uuid NOT NULL,
+	"level" "task_level" DEFAULT 'project' NOT NULL,
+	"project_id" uuid,
 	"assignee_id" uuid,
 	"reporter_id" uuid NOT NULL,
 	"status" "task_status" DEFAULT 'todo' NOT NULL,
@@ -240,6 +256,7 @@ CREATE TABLE "whiteboards" (
 	"project_id" uuid,
 	"created_by" uuid NOT NULL,
 	"yjs_state" "bytea",
+	"shapes_data" jsonb DEFAULT '[]'::jsonb,
 	"thumbnail_url" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -296,6 +313,7 @@ CREATE TABLE "event_attendees" (
 	"event_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"status" "rsvp_status" DEFAULT 'pending' NOT NULL,
+	"requirement" "attendee_requirement" DEFAULT 'required' NOT NULL,
 	"responded_at" timestamp with time zone
 );
 --> statement-breakpoint
@@ -314,13 +332,27 @@ CREATE TABLE "events" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "entity_links" (
+CREATE TABLE "feedback" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"source_type" varchar(20) NOT NULL,
-	"source_id" uuid NOT NULL,
-	"target_type" varchar(20) NOT NULL,
-	"target_id" uuid NOT NULL,
-	"created_by" uuid NOT NULL,
+	"title" varchar(200) NOT NULL,
+	"description" text NOT NULL,
+	"category" "feedback_category" NOT NULL,
+	"priority" "feedback_priority" DEFAULT 'medium' NOT NULL,
+	"status" "feedback_status" DEFAULT 'open' NOT NULL,
+	"submitted_by" uuid NOT NULL,
+	"reviewed_by" uuid,
+	"reviewed_at" timestamp with time zone,
+	"admin_notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "feedback_responses" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"feedback_id" uuid NOT NULL,
+	"responded_by" uuid NOT NULL,
+	"message" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -352,6 +384,149 @@ CREATE TABLE "polls" (
 	"expires_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "entity_assignments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"entity_type" varchar(20) NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
+	"role" varchar(20),
+	"assigned_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "client_projects" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"client_id" uuid NOT NULL,
+	"project_id" uuid NOT NULL,
+	"role" "client_project_role" DEFAULT 'stakeholder' NOT NULL,
+	"start_date" timestamp with time zone,
+	"end_date" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "clients" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"email" varchar(255),
+	"phone" varchar(50),
+	"company" varchar(255),
+	"notes" text,
+	"status" "client_status" DEFAULT 'lead' NOT NULL,
+	"owner_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "entity_links" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"source_type" varchar(20) NOT NULL,
+	"source_id" uuid NOT NULL,
+	"target_type" varchar(20) NOT NULL,
+	"target_id" uuid NOT NULL,
+	"created_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "budgets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"amount_cents" integer NOT NULL,
+	"period_type" "budget_period" NOT NULL,
+	"category" "expense_category",
+	"project_id" uuid,
+	"client_id" uuid,
+	"created_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "expenses" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"description" varchar(500) NOT NULL,
+	"amount_cents" integer NOT NULL,
+	"currency" varchar(3) DEFAULT 'USD' NOT NULL,
+	"category" "expense_category" NOT NULL,
+	"custom_label" varchar(100),
+	"receipt_url" text,
+	"project_id" uuid,
+	"client_id" uuid,
+	"budget_id" uuid,
+	"asset_id" uuid,
+	"user_id" uuid,
+	"frequency" "expense_frequency" DEFAULT 'one_time' NOT NULL,
+	"tax_deductible" boolean DEFAULT true NOT NULL,
+	"date" date NOT NULL,
+	"vendor" varchar(255),
+	"notes" text,
+	"status" "expense_status" DEFAULT 'pending' NOT NULL,
+	"submitted_by" uuid NOT NULL,
+	"reviewed_by" uuid,
+	"reviewed_at" timestamp with time zone,
+	"rejection_reason" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "assets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"description" text,
+	"category" "asset_category" NOT NULL,
+	"status" "asset_status" DEFAULT 'available' NOT NULL,
+	"serial_number" varchar(255),
+	"purchase_cost_cents" integer,
+	"purchase_date" date,
+	"warranty_expires_at" timestamp with time zone,
+	"assigned_to_id" uuid,
+	"project_id" uuid,
+	"client_id" uuid,
+	"notes" text,
+	"created_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "pinned_messages" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"entity_type" varchar(20) NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"pinned_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "muted_entities" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"entity_type" varchar(20) NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_settings" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"notify_task_assignment" boolean DEFAULT true NOT NULL,
+	"notify_chat_mention" boolean DEFAULT true NOT NULL,
+	"notify_forum_reply" boolean DEFAULT true NOT NULL,
+	"notify_project_update" boolean DEFAULT true NOT NULL,
+	"notify_event_invite" boolean DEFAULT true NOT NULL,
+	"notify_goal_update" boolean DEFAULT true NOT NULL,
+	"email_digest" "email_digest" DEFAULT 'off' NOT NULL,
+	"dashboard_widgets" jsonb DEFAULT '["tasks","events","goals","feedbackItems","chatNotifications"]'::jsonb NOT NULL,
+	"timezone" varchar(100) DEFAULT 'UTC' NOT NULL,
+	"working_hours_start" time DEFAULT '09:00' NOT NULL,
+	"working_hours_end" time DEFAULT '17:00' NOT NULL,
+	"default_calendar_view" "calendar_view" DEFAULT 'week' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_settings_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -399,12 +574,41 @@ ALTER TABLE "availability" ADD CONSTRAINT "availability_user_id_users_id_fk" FOR
 ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "entity_links" ADD CONSTRAINT "entity_links_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "feedback" ADD CONSTRAINT "feedback_submitted_by_users_id_fk" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "feedback" ADD CONSTRAINT "feedback_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "feedback_responses" ADD CONSTRAINT "feedback_responses_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "feedback_responses" ADD CONSTRAINT "feedback_responses_responded_by_users_id_fk" FOREIGN KEY ("responded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "poll_options" ADD CONSTRAINT "poll_options_poll_id_polls_id_fk" FOREIGN KEY ("poll_id") REFERENCES "public"."polls"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "poll_votes" ADD CONSTRAINT "poll_votes_poll_id_polls_id_fk" FOREIGN KEY ("poll_id") REFERENCES "public"."polls"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "poll_votes" ADD CONSTRAINT "poll_votes_option_id_poll_options_id_fk" FOREIGN KEY ("option_id") REFERENCES "public"."poll_options"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "poll_votes" ADD CONSTRAINT "poll_votes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "polls" ADD CONSTRAINT "polls_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entity_assignments" ADD CONSTRAINT "entity_assignments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entity_assignments" ADD CONSTRAINT "entity_assignments_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "client_projects" ADD CONSTRAINT "client_projects_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "client_projects" ADD CONSTRAINT "client_projects_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "clients" ADD CONSTRAINT "clients_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entity_links" ADD CONSTRAINT "entity_links_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_budget_id_budgets_id_fk" FOREIGN KEY ("budget_id") REFERENCES "public"."budgets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_submitted_by_users_id_fk" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_assigned_to_id_users_id_fk" FOREIGN KEY ("assigned_to_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pinned_messages" ADD CONSTRAINT "pinned_messages_pinned_by_users_id_fk" FOREIGN KEY ("pinned_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "muted_entities" ADD CONSTRAINT "muted_entities_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "reaction_unique" ON "reactions" USING btree ("message_id","user_id","emoji");--> statement-breakpoint
+CREATE UNIQUE INDEX "poll_vote_unique" ON "poll_votes" USING btree ("poll_id","option_id","user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "entity_assignment_unique" ON "entity_assignments" USING btree ("entity_type","entity_id","user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "entity_link_unique" ON "entity_links" USING btree ("source_type","source_id","target_type","target_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "poll_vote_unique" ON "poll_votes" USING btree ("poll_id","option_id","user_id");
+CREATE UNIQUE INDEX "pinned_entity_unique" ON "pinned_messages" USING btree ("entity_type","entity_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "muted_entities_user_entity_idx" ON "muted_entities" USING btree ("user_id","entity_type","entity_id");

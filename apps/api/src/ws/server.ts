@@ -11,7 +11,7 @@ import {
   getWhiteboardRoomMembers,
   broadcastToWhiteboardRoom,
 } from './connections.js'
-import { handleMessage, setupPubSub } from './handlers.js'
+import { handleMessage } from './handlers.js'
 
 const HEARTBEAT_INTERVAL = 30_000
 const SESSION_COOKIE = 'sentral_session'
@@ -20,8 +20,6 @@ export function createWebSocketServer(port: number) {
   const wss = new WebSocketServer({ port })
 
   console.log(`WebSocket server running on ws://localhost:${port}`)
-
-  void setupPubSub()
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const connId = randomUUID()
@@ -91,20 +89,20 @@ export function createWebSocketServer(port: number) {
         broadcastToWhiteboardRoom(whiteboardId, presenceMsg)
       }
 
-      void removeConnection(connId).then(() => {
-        // Broadcast offline
-        for (const [, conn] of getAllConnections()) {
-          if (conn.ws.readyState === 1) {
-            conn.ws.send(
-              JSON.stringify({
-                type: 'presence:offline',
-                payload: { userId: user.id, userName: user.name },
-                timestamp: new Date().toISOString(),
-              }),
-            )
-          }
+      removeConnection(connId)
+
+      // Broadcast offline
+      for (const [, conn] of getAllConnections()) {
+        if (conn.ws.readyState === 1) {
+          conn.ws.send(
+            JSON.stringify({
+              type: 'presence:offline',
+              payload: { userId: user.id, userName: user.name },
+              timestamp: new Date().toISOString(),
+            }),
+          )
         }
-      })
+      }
     })
   })
 

@@ -15,6 +15,7 @@
     "@schedule-x/calendar": "^4.3.1",
     "@schedule-x/react": "^4.1.0",
     "@schedule-x/theme-default": "^4.3.1",
+    "@sentral/api": "*",
     "@sentral/shared": "*",
     "dompurify": "^3.3.3",
     "lucide-react": "^1.7.0",

@@ -5,7 +5,7 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url:
-      process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev',
+    // Prefer unpooled URL for migrations (direct connection, avoids pooler limits)
+    url: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL!,
   },
 })
