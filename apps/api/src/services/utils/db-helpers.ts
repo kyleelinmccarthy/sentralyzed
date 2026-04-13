@@ -16,13 +16,13 @@ export function whereActiveById(idColumn: PgColumn, id: string, deletedAtColumn:
  * Returns the updated record or undefined if not found.
  */
 export async function softDelete<T extends PgTable>(table: T, idColumn: PgColumn, id: string) {
-  const [record] = await db
+  const result = await db
     .update(table)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic table type doesn't include deletedAt column
     .set({ deletedAt: new Date() } as Record<string, unknown> as any)
     .where(eq(idColumn, id))
     .returning()
-  return record
+  return (result as unknown as Record<string, unknown>[])[0]
 }
 
 /**

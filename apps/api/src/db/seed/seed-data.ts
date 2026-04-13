@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
 import { eq } from 'drizzle-orm'
 import { users } from '../schema/users.js'
 import { goals } from '../schema/goals.js'
@@ -10,25 +10,23 @@ import { assets } from '../schema/assets.js'
 import { entityAssignments } from '../schema/assignments.js'
 
 async function seedData() {
-  const connectionString =
-    process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev'
-  const client = postgres(connectionString)
-  const db = drizzle(client)
+  const sql = neon(process.env.DATABASE_URL!)
+  const db = drizzle(sql)
 
   console.log('Seeding data...')
 
   // Clean up any previous seed data to make this idempotent
   console.log('Cleaning up previous seed data...')
-  await client`DELETE FROM entity_assignments`
-  await client`DELETE FROM project_members`
-  await client`DELETE FROM task_comments`
-  await client`DELETE FROM tasks`
-  await client`DELETE FROM expenses`
-  await client`DELETE FROM assets`
-  await client`DELETE FROM client_projects`
-  await client`DELETE FROM clients`
-  await client`DELETE FROM projects`
-  await client`DELETE FROM goals`
+  await sql`DELETE FROM entity_assignments`
+  await sql`DELETE FROM project_members`
+  await sql`DELETE FROM task_comments`
+  await sql`DELETE FROM tasks`
+  await sql`DELETE FROM expenses`
+  await sql`DELETE FROM assets`
+  await sql`DELETE FROM client_projects`
+  await sql`DELETE FROM clients`
+  await sql`DELETE FROM projects`
+  await sql`DELETE FROM goals`
   console.log('  Cleaned up.')
 
   // Get admin users
@@ -40,7 +38,6 @@ async function seedData() {
     console.error(
       'Admin users not found. Run the base seed first: npm run db:seed --workspace=@sentral/api',
     )
-    await client.end()
     process.exit(1)
   }
 
@@ -314,7 +311,7 @@ async function seedData() {
   ]
   const insertedExpenses = []
   for (const row of expenseRows) {
-    const result = await client`
+    const result = await sql`
       INSERT INTO expenses (description, amount_cents, category, frequency, date, submitted_by, status, notes)
       VALUES (${row.desc}, ${row.cents}, ${row.cat}::expense_category, ${row.freq}::expense_frequency, ${today}, ${a1}, 'approved'::expense_status, ${row.notes ?? null})
       RETURNING id
@@ -387,7 +384,6 @@ async function seedData() {
   console.log(`  Assets: ${insertedAssets.length}`)
   console.log(`  Assignments: ${assignmentValues.length}`)
 
-  await client.end()
 }
 
 seedData().catch(console.error)

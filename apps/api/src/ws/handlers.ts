@@ -1,8 +1,6 @@
-import { redisSub } from '../lib/redis.js'
 import {
   broadcastToChannel,
   getConnection,
-  getAllConnections,
   joinWhiteboardRoom,
   leaveWhiteboardRoom,
   getWhiteboardRoomMembers,
@@ -19,21 +17,6 @@ import {
 import { db } from '../db/index.js'
 import { messages, reactions, channelMembers } from '../db/schema/chat.js'
 import { eq } from 'drizzle-orm'
-
-export async function setupPubSub() {
-  await redisSub.subscribe('chat:broadcast', 'presence:broadcast')
-
-  redisSub.on('message', (channel, message) => {
-    if (channel === 'chat:broadcast' || channel === 'presence:broadcast') {
-      // Broadcast to all local connections
-      for (const [, conn] of getAllConnections()) {
-        if (conn.ws.readyState === 1) {
-          conn.ws.send(message)
-        }
-      }
-    }
-  })
-}
 
 export async function handleMessage(connId: string, data: string) {
   const conn = getConnection(connId)

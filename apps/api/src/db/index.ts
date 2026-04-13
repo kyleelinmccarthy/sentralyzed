@@ -1,11 +1,19 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
+import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import * as schema from './schema/index.js'
 
-const connectionString =
-  process.env.DATABASE_URL || 'postgresql://sentral:devpassword123@localhost:5433/sentral_dev'
+let _db: NeonHttpDatabase<typeof schema> | undefined
 
-const client = postgres(connectionString)
-export const db = drizzle(client, { schema })
+function createDb() {
+  const sql: NeonQueryFunction<false, false> = neon(process.env.DATABASE_URL!)
+  return drizzle(sql, { schema })
+}
 
-export type Database = typeof db
+export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
+  get(_, prop) {
+    if (!_db) _db = createDb()
+    return Reflect.get(_db, prop)
+  },
+})
+
+export type Database = NeonHttpDatabase<typeof schema>
