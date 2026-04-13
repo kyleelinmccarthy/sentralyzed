@@ -5,85 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775253761237,
-      "tag": "0000_naive_rocket_raccoon",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775254533267,
-      "tag": "0001_new_cloak",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1775254861780,
-      "tag": "0002_slippery_thena",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1775255005061,
-      "tag": "0003_perpetual_stardust",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1775255068905,
-      "tag": "0004_last_stone_men",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1775340000000,
-      "tag": "0005_add_poll_context_types",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1775340100000,
-      "tag": "0006_add_shapes_data",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1775340200000,
-      "tag": "0007_add_client_id_to_expenses",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1775340300000,
-      "tag": "0008_add_budget_expense_relations",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1775512659565,
-      "tag": "0009_motionless_mole_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1775600000000,
-      "tag": "0010_add_expense_frequency",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1775700000000,
-      "tag": "0011_add_expense_user_id",
+      "when": 1776043357422,
+      "tag": "0000_initial_baseline",
       "breakpoints": true
     }
   ]
