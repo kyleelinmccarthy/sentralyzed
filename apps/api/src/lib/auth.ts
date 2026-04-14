@@ -1,14 +1,8 @@
-import argon2 from 'argon2'
 import { randomBytes, createHash } from 'node:crypto'
 
-export async function hash(password: string): Promise<string> {
-  return argon2.hash(password)
-}
-
-export async function verify(hash: string, password: string): Promise<boolean> {
-  return argon2.verify(hash, password)
-}
-
+// Invitation tokens still live in our DB (Better Auth doesn't manage these).
+// We generate a random token, store its SHA-256 hash, and the user presents the
+// raw token via the /register?token=... URL.
 export function generateToken(): string {
   return randomBytes(32).toString('hex')
 }

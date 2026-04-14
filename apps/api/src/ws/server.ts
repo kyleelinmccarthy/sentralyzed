@@ -1,8 +1,10 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { IncomingMessage } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { parse as parseCookie } from 'cookie'
-import { authService } from '../services/auth.service.js'
+import { eq } from 'drizzle-orm'
+import { getSessionFromHeaders } from '../lib/better-auth.js'
+import { db } from '../db/index.js'
+import { users } from '../db/schema/users.js'
 import {
   addConnection,
   removeConnection,
@@ -14,7 +16,6 @@ import {
 import { handleMessage } from './handlers.js'
 
 const HEARTBEAT_INTERVAL = 30_000
-const SESSION_COOKIE = 'sentral_session'
 
 export function createWebSocketServer(port: number) {
   const wss = new WebSocketServer({ port })
@@ -24,22 +25,24 @@ export function createWebSocketServer(port: number) {
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const connId = randomUUID()
 
-    // Authenticate via cookie
-    const cookies = parseCookie(req.headers.cookie || '')
-    const token = cookies[SESSION_COOKIE]
+    // Authenticate via Better Auth — verifies the signed session cookie.
+    const headers = new Headers()
+    if (req.headers.cookie) headers.set('cookie', req.headers.cookie)
 
-    if (!token) {
+    const session = await getSessionFromHeaders(headers)
+    if (!session?.user) {
       ws.close(4001, 'Unauthorized')
       return
     }
 
-    const session = await authService.validateSession(token)
-    if (!session) {
-      ws.close(4001, 'Invalid session')
+    // Look up our local user row to confirm they're still active and to grab
+    // the display name (Better Auth's session.user.name should match).
+    const user = await db.query.users.findFirst({ where: eq(users.id, session.user.id) })
+    if (!user || !user.isActive) {
+      ws.close(4001, 'Forbidden')
       return
     }
 
-    const { user } = session
     addConnection(connId, ws, user.id, user.name)
 
     // Broadcast presence
@@ -80,10 +83,10 @@ export function createWebSocketServer(port: number) {
       // Clean up whiteboard rooms before removing connection
       const affectedRooms = leaveAllWhiteboardRooms(connId)
       for (const { whiteboardId } of affectedRooms) {
-        const users = getWhiteboardRoomMembers(whiteboardId)
+        const roomUsers = getWhiteboardRoomMembers(whiteboardId)
         const presenceMsg = JSON.stringify({
           type: 'whiteboard:presence',
-          payload: { whiteboardId, users },
+          payload: { whiteboardId, users: roomUsers },
           timestamp: new Date().toISOString(),
         })
         broadcastToWhiteboardRoom(whiteboardId, presenceMsg)

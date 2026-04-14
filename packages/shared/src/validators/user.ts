@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUTH_PROVIDERS, ROLES } from '../types/user.js'
+import { ROLES } from '../types/user.js'
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,9 +18,9 @@ export const userSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(255),
   avatarUrl: z.string().url().nullable(),
-  authProvider: z.enum(AUTH_PROVIDERS),
   role: z.enum(ROLES),
   isActive: z.boolean(),
+  emailVerified: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

@@ -1,172 +1,27 @@
 import { Hono } from 'hono'
-import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { zValidator } from '@hono/zod-validator'
-import { loginSchema, registerSchema } from '@sentral/shared/validators/user'
+import { eq, and } from 'drizzle-orm'
+import { z } from 'zod'
 import { authService } from '../../services/auth.service.js'
 import { authMiddleware } from '../../middleware/auth.js'
-import { env } from '../../lib/env.js'
+import { auth as betterAuth } from '../../lib/better-auth.js'
+import { db } from '../../db/index.js'
+import { users } from '../../db/schema/users.js'
+import { invitations } from '../../db/schema/invitations.js'
+import { hashToken } from '../../lib/auth.js'
 import type { AppEnv } from '../../types.js'
-import { google } from 'googleapis'
-import { z } from 'zod'
-
-const SESSION_COOKIE = 'sentral_session'
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-  maxAge: 7 * 24 * 60 * 60, // 7 days
-  ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
-}
 
 const auth = new Hono<AppEnv>()
 
-// Google OAuth
-const oauth2Client = new google.auth.OAuth2(
-  env.GOOGLE_CLIENT_ID,
-  env.GOOGLE_CLIENT_SECRET,
-  env.GOOGLE_CALLBACK_URL,
-)
-
-auth.get('/google', (c) => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['openid', 'email', 'profile'],
-  })
-  return c.redirect(url)
-})
-
-auth.get('/google/callback', async (c) => {
-  const code = c.req.query('code')
-  if (!code) {
-    return c.json({ error: 'Missing authorization code' }, 400)
-  }
-
-  try {
-    const { tokens } = await oauth2Client.getToken(code)
-    oauth2Client.setCredentials(tokens)
-
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client })
-    const { data } = await oauth2.userinfo.get()
-
-    if (!data.email) {
-      return c.json({ error: 'Could not retrieve email from Google' }, 400)
-    }
-
-    const result = await authService.googleAuth(
-      data.id || '',
-      data.email,
-      data.name || data.email,
-      data.picture || null,
-    )
-
-    setCookie(c, SESSION_COOKIE, result.session.token, COOKIE_OPTIONS)
-    return c.redirect(env.FRONTEND_URL)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Authentication failed'
-    return c.json({ error: message }, 400)
-  }
-})
-
-// Email/password auth
-auth.post('/login', zValidator('json', loginSchema), async (c) => {
-  const { email, password } = c.req.valid('json')
-  const result = await authService.login(email, password)
-
-  if (!result) {
-    return c.json({ error: 'Invalid email or password' }, 401)
-  }
-
-  setCookie(c, SESSION_COOKIE, result.session.token, COOKIE_OPTIONS)
-  return c.json({
-    user: {
-      id: result.user.id,
-      email: result.user.email,
-      name: result.user.name,
-      role: result.user.role,
-      avatarUrl: result.user.avatarUrl,
-      authProvider: result.user.authProvider,
-    },
-  })
-})
-
-auth.post('/register', zValidator('json', registerSchema), async (c) => {
-  const { email, name, password, inviteToken } = c.req.valid('json')
-
-  try {
-    const result = await authService.register(email, name, password, inviteToken)
-    setCookie(c, SESSION_COOKIE, result.session.token, COOKIE_OPTIONS)
-    return c.json(
-      {
-        user: {
-          id: result.user.id,
-          email: result.user.email,
-          name: result.user.name,
-          role: result.user.role,
-          avatarUrl: result.user.avatarUrl,
-        },
-      },
-      201,
-    )
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Registration failed'
-    return c.json({ error: message }, 400)
-  }
-})
-
-auth.post('/logout', async (c) => {
-  const token = getCookie(c, SESSION_COOKIE)
-  if (token) {
-    await authService.logout(token)
-    deleteCookie(c, SESSION_COOKIE)
-  }
-  return c.json({ ok: true })
-})
-
-auth.post(
-  '/forgot-password',
-  zValidator('json', z.object({ email: z.string().email() })),
-  async (c) => {
-    const { email } = c.req.valid('json')
-    // MVP: just log the reset token to console
-    console.log(`[AUTH] Password reset requested for: ${email}`)
-    // Always return success to prevent email enumeration
-    return c.json({ message: 'If an account exists, a reset link will be sent' })
-  },
-)
-
-// Get current user (authenticated)
+// ─── Current user (authenticated) ───
 auth.get('/me', authMiddleware, (c) => {
   const user = c.get('user')
   return c.json({ user })
 })
 
-// Change password (authenticated)
-auth.post(
-  '/change-password',
-  authMiddleware,
-  zValidator(
-    'json',
-    z.object({
-      currentPassword: z.string().min(1),
-      newPassword: z.string().min(8),
-    }),
-  ),
-  async (c) => {
-    const user = c.get('user')
-    const { currentPassword, newPassword } = c.req.valid('json')
-
-    try {
-      await authService.changePassword(user.id, currentPassword, newPassword)
-      return c.json({ message: 'Password changed successfully' })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to change password'
-      return c.json({ error: message }, 400)
-    }
-  },
-)
-
-// Update profile (authenticated)
+// ─── Update profile (authenticated) ───
+// Updates our local users row AND syncs name/image to Better Auth so the session
+// reflects the new values immediately.
 auth.patch(
   '/profile',
   authMiddleware,
@@ -199,65 +54,115 @@ auth.patch(
   },
 )
 
-// List active sessions
-auth.get('/sessions', authMiddleware, async (c) => {
-  const user = c.get('user')
-  const token = getCookie(c, SESSION_COOKIE)!
-  const currentTokenHash = await import('../../lib/auth.js').then((m) => m.hashToken(token))
-  const sessionList = await authService.getSessions(user.id, currentTokenHash)
-  return c.json({ sessions: sessionList })
-})
-
-// Revoke a specific session
-auth.delete('/sessions/:id', authMiddleware, async (c) => {
-  const user = c.get('user')
-  const sessionId = c.req.param('id') as string
-  try {
-    await authService.revokeSession(user.id, sessionId)
-    return c.json({ ok: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to revoke session'
-    return c.json({ error: message }, 400)
-  }
-})
-
-// Revoke all other sessions
-auth.post('/sessions/revoke-others', authMiddleware, async (c) => {
-  const user = c.get('user')
-  const token = getCookie(c, SESSION_COOKIE)!
-  const currentTokenHash = await import('../../lib/auth.js').then((m) => m.hashToken(token))
-  await authService.revokeOtherSessions(user.id, currentTokenHash)
-  return c.json({ ok: true })
-})
-
-// Export user data
+// ─── Export user data (authenticated, GDPR) ───
 auth.get('/export', authMiddleware, async (c) => {
   const user = c.get('user')
   const data = await authService.exportUserData(user.id)
   return c.json(data)
 })
 
-// Delete account
+// ─── Delete account (authenticated) ───
+// The frontend should call authClient.deleteUser() first to remove the Better
+// Auth session/account records, then this endpoint to soft-delete our local row
+// and anonymize PII.
+auth.post('/delete-account', authMiddleware, async (c) => {
+  const user = c.get('user')
+  try {
+    await authService.deleteAccount(user.id)
+    return c.json({ ok: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to delete account'
+    return c.json({ error: message }, 400)
+  }
+})
+
+// ─── Validate an invitation token (public) ───
+// Used by the /register page to confirm a token is valid before showing the form.
+// Returns email + role so the form can pre-fill / display them.
+auth.get('/invitations/:token', async (c) => {
+  const token = c.req.param('token')
+  const tokenHash = hashToken(token)
+  const invite = await db.query.invitations.findFirst({
+    where: eq(invitations.tokenHash, tokenHash),
+  })
+
+  if (!invite) {
+    return c.json({ error: 'Invitation not found' }, 404)
+  }
+  if (invite.acceptedAt) {
+    return c.json({ error: 'Invitation already used' }, 400)
+  }
+  if (invite.expiresAt < new Date()) {
+    return c.json({ error: 'Invitation expired' }, 400)
+  }
+
+  return c.json({ email: invite.email, role: invite.role })
+})
+
+// ─── Invitation-gated email signup (public) ───
+// Validates the invite, calls Better Auth's internal signUp.email API (bypassing
+// the public `disableSignUp` gate), then upgrades the new user with the role
+// and invitedBy from the invitation. Better Auth's autoSignIn issues the session
+// cookie automatically.
 auth.post(
-  '/delete-account',
-  authMiddleware,
+  '/invitation-signup',
   zValidator(
     'json',
     z.object({
-      password: z.string().nullable(),
+      email: z.string().email(),
+      name: z.string().min(1),
+      password: z.string().min(8),
+      inviteToken: z.string().min(1),
     }),
   ),
   async (c) => {
-    const user = c.get('user')
-    const { password } = c.req.valid('json')
+    const { email, name, password, inviteToken } = c.req.valid('json')
+
+    const tokenHash = hashToken(inviteToken)
+    const invite = await db.query.invitations.findFirst({
+      where: and(eq(invitations.tokenHash, tokenHash), eq(invitations.email, email)),
+    })
+
+    if (!invite) {
+      return c.json({ error: 'Invalid invitation token' }, 400)
+    }
+    if (invite.acceptedAt) {
+      return c.json({ error: 'Invitation already used' }, 400)
+    }
+    if (invite.expiresAt < new Date()) {
+      return c.json({ error: 'Invitation expired' }, 400)
+    }
+
+    // Sign up via Better Auth — `asResponse: true` returns the raw Response so
+    // we can forward the Set-Cookie header that establishes the session.
+    let response: Response
     try {
-      await authService.deleteAccount(user.id, password)
-      deleteCookie(c, SESSION_COOKIE)
-      return c.json({ ok: true })
+      response = await betterAuth.api.signUpEmail({
+        body: { email, name, password },
+        asResponse: true,
+      })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete account'
+      const message = error instanceof Error ? error.message : 'Signup failed'
       return c.json({ error: message }, 400)
     }
+
+    if (!response.ok) {
+      return new Response(response.body, { status: response.status, headers: response.headers })
+    }
+
+    // Upgrade the freshly-created user with role + invitedBy from the invite,
+    // and mark the invitation accepted.
+    await db
+      .update(users)
+      .set({ role: invite.role, invitedBy: invite.invitedBy, emailVerified: true })
+      .where(eq(users.email, email))
+
+    await db
+      .update(invitations)
+      .set({ acceptedAt: new Date() })
+      .where(eq(invitations.id, invite.id))
+
+    return new Response(response.body, { status: response.status, headers: response.headers })
   },
 )
 

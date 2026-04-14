@@ -12,7 +12,7 @@ interface AdminUser {
   name: string
   role: 'admin' | 'manager' | 'member'
   isActive: boolean
-  authProvider: string
+  emailVerified: boolean
   createdAt: string
 }
 

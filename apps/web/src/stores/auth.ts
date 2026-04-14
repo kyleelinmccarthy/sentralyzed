@@ -1,6 +1,7 @@
 'use client'
 
-import { create } from 'zustand'
+import { useEffect, useState, useCallback } from 'react'
+import { authClient, useSession } from '@/lib/auth-client'
 import { api, ApiError } from '@/lib/api'
 import type { User } from '@sentral/shared/types/user'
 
@@ -19,41 +20,72 @@ interface AuthState {
   fetchUser: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoading: true,
-  isAuthenticated: false,
+/**
+ * Compatibility shim around Better Auth so existing call sites keep working.
+ * Sources auth identity from authClient.useSession() and enriches with our
+ * local user row (role/isActive) from /auth/me.
+ */
+export function useAuthStore(): AuthState {
+  const { data: session, isPending, refetch } = useSession()
+  const [user, setUser] = useState<User | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
 
-  login: async (email, password) => {
-    const data = await api.post<{ user: User }>('/auth/login', { email, password })
-    set({ user: data.user, isAuthenticated: true })
-  },
-
-  register: async ({ email, name, password, inviteToken }) => {
-    const data = await api.post<{ user: User }>('/auth/register', {
-      email,
-      name,
-      password,
-      inviteToken,
-    })
-    set({ user: data.user, isAuthenticated: true })
-  },
-
-  logout: async () => {
-    await api.post('/auth/logout')
-    set({ user: null, isAuthenticated: false })
-  },
-
-  fetchUser: async () => {
-    try {
-      const data = await api.get<{ user: User }>('/auth/me')
-      set({ user: data.user, isAuthenticated: true, isLoading: false })
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        set({ user: null, isAuthenticated: false, isLoading: false })
-      } else {
-        set({ isLoading: false })
-      }
+  const fetchUser = useCallback(async () => {
+    if (!session?.user) {
+      setUser(null)
+      setProfileLoading(false)
+      return
     }
-  },
-}))
+    try {
+      const res = await api.get<{ user: User }>('/auth/me')
+      setUser(res.user)
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 401) {
+        console.error('[auth] failed to load /auth/me', err)
+      }
+      setUser(null)
+    } finally {
+      setProfileLoading(false)
+    }
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    void fetchUser()
+  }, [fetchUser])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const result = await authClient.signIn.email({ email, password })
+      if (result.error) {
+        throw new ApiError(result.error.status ?? 401, result.error.message ?? 'Login failed')
+      }
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const register = useCallback(
+    async (data: { email: string; name: string; password: string; inviteToken: string }) => {
+      // Custom invitation-gated flow — backend validates the invite then signs the user in.
+      await api.post<{ user: User }>('/auth/invitation-signup', data)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const logout = useCallback(async () => {
+    await authClient.signOut()
+    setUser(null)
+    await refetch()
+  }, [refetch])
+
+  return {
+    user,
+    isLoading: isPending || profileLoading,
+    isAuthenticated: !!session?.user,
+    login,
+    register,
+    logout,
+    fetchUser,
+  }
+}

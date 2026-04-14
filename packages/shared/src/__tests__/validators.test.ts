@@ -56,9 +56,9 @@ describe('userSchema', () => {
       email: 'user@example.com',
       name: 'Test User',
       avatarUrl: null,
-      authProvider: 'email',
       role: 'member',
       isActive: true,
+      emailVerified: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -71,9 +71,9 @@ describe('userSchema', () => {
       email: 'user@example.com',
       name: 'Test User',
       avatarUrl: null,
-      authProvider: 'email',
       role: 'superadmin',
       isActive: true,
+      emailVerified: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })

@@ -3,12 +3,11 @@
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/auth'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { ApiError } from '@/lib/api'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export default function LoginPage() {
   const { login } = useAuthStore()
@@ -31,6 +30,20 @@ export default function LoginPage() {
     }
   }
 
+  const handleGoogle = async () => {
+    setError('')
+    setIsLoading(true)
+    const result = await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: '/',
+    })
+    if (result.error) {
+      setError(result.error.message ?? 'Google sign-in failed')
+      setIsLoading(false)
+    }
+    // On success, Better Auth redirects to Google; no further state to manage here.
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md p-8">
@@ -44,10 +57,12 @@ export default function LoginPage() {
           <p className="text-sm text-french-gray mt-2">Sign in to your workspace</p>
         </div>
 
-        {/* Google OAuth */}
-        <a
-          href={`${API_URL}/auth/google`}
-          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-french-gray rounded-[8px] text-sm font-medium text-jet hover:bg-gray-50 transition-colors mb-6"
+        {/* Google OAuth — open signup, no invitation required */}
+        <button
+          type="button"
+          onClick={() => void handleGoogle()}
+          disabled={isLoading}
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-french-gray rounded-[8px] text-sm font-medium text-jet hover:bg-gray-50 transition-colors mb-6 disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path
@@ -68,7 +83,7 @@ export default function LoginPage() {
             />
           </svg>
           Continue with Google
-        </a>
+        </button>
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">

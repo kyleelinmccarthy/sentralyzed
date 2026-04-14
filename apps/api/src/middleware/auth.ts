@@ -1,9 +1,9 @@
 import type { Context, Next } from 'hono'
-import { getCookie } from 'hono/cookie'
-import { authService } from '../services/auth.service.js'
-import type { Role, AuthProvider } from '@sentral/shared/types/user'
-
-const SESSION_COOKIE = 'sentral_session'
+import { eq } from 'drizzle-orm'
+import { getSessionFromHeaders } from '../lib/better-auth.js'
+import { db } from '../db/index.js'
+import { users } from '../db/schema/users.js'
+import type { Role } from '@sentral/shared/types/user'
 
 export interface AuthUser {
   id: string
@@ -11,28 +11,33 @@ export interface AuthUser {
   name: string
   role: Role
   avatarUrl: string | null
-  authProvider: AuthProvider
 }
 
 export async function authMiddleware(c: Context, next: Next) {
-  const token = getCookie(c, SESSION_COOKIE)
+  // Fast path: header set by the Next.js catch-all (extracts session once per request)
+  let userId = c.req.header('x-auth-user-id')
 
-  if (!token) {
+  // Fallback: WS server / standalone API in local dev hits Better Auth directly
+  if (!userId) {
+    const session = await getSessionFromHeaders(c.req.raw.headers)
+    userId = session?.user?.id
+  }
+
+  if (!userId) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
-  const result = await authService.validateSession(token)
-  if (!result) {
-    return c.json({ error: 'Invalid or expired session' }, 401)
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId) })
+  if (!user || !user.isActive) {
+    return c.json({ error: 'Forbidden' }, 403)
   }
 
   c.set('user', {
-    id: result.user.id,
-    email: result.user.email,
-    name: result.user.name,
-    role: result.user.role,
-    avatarUrl: result.user.avatarUrl,
-    authProvider: result.user.authProvider,
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    avatarUrl: user.avatarUrl,
   } satisfies AuthUser)
 
   await next()

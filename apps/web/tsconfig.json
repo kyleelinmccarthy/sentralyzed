@@ -1,6 +1,8 @@
 {
   "extends": "@sentral/config/typescript/nextjs",
   "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@/*": ["./src/*"]
     }

@@ -2,10 +2,10 @@
 
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { api } from '@/lib/api'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -15,7 +15,12 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    await api.post('/auth/forgot-password', { email })
+    // Better Auth always returns success even if the email doesn't exist
+    // (prevents user enumeration). The reset email is sent server-side.
+    await authClient.requestPasswordReset({
+      email,
+      redirectTo: '/reset-password',
+    })
     setSubmitted(true)
     setIsLoading(false)
   }

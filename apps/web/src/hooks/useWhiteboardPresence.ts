@@ -29,7 +29,7 @@ export function useWhiteboardPresence({
   onViewportSync,
 }: UseWhiteboardPresenceOptions) {
   const { send, on, isConnected } = useWebSocket()
-  const user = useAuthStore((s) => s.user)
+  const { user } = useAuthStore()
   const [presentUsers, setPresentUsers] = useState<WhiteboardUser[]>([])
   const [followingUserId, setFollowingUserId] = useState<string | null>(null)
 

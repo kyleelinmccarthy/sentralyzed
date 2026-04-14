@@ -4,17 +4,13 @@ import { useEffect, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
 
-const PUBLIC_PATHS = ['/login', '/register', '/forgot-password']
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading, fetchUser } = useAuthStore()
+  const { isAuthenticated, isLoading } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
   const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
-
-  useEffect(() => {
-    void fetchUser()
-  }, [fetchUser])
 
   useEffect(() => {
     if (isLoading) return

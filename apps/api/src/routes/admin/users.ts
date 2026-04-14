@@ -14,7 +14,6 @@ adminUsersRouter.use('*', requireRole('admin'))
 
 adminUsersRouter.get('/', async (c) => {
   const allUsers = await db.query.users.findMany({
-    columns: { passwordHash: false },
     orderBy: (u, { desc: d }) => [d(u.createdAt)],
   })
   return c.json({ users: allUsers })
@@ -23,7 +22,6 @@ adminUsersRouter.get('/', async (c) => {
 adminUsersRouter.get('/:id', async (c) => {
   const user = await db.query.users.findFirst({
     where: eq(users.id, c.req.param('id')),
-    columns: { passwordHash: false },
   })
   if (!user) return c.json({ error: 'User not found' }, 404)
   return c.json({ user })

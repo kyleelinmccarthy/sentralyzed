@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { useAuthStore } from '@/stores/auth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,9 +90,15 @@ export default function ForumsPage() {
     void loadThreads()
   }, [activeCategory, search])
 
-  const loadUserRole = () => {
-    const user = useAuthStore.getState().user
-    if (user) setUserRole(user.role)
+  const loadUserRole = async () => {
+    try {
+      const data = await api.get<{ user: { role: 'admin' | 'manager' | 'member' } | null }>(
+        '/auth/me',
+      )
+      if (data.user) setUserRole(data.user.role)
+    } catch {
+      // ignore — auth provider will redirect on 401
+    }
   }
 
   const loadCategories = async () => {
