@@ -40,6 +40,9 @@ const options = {
   },
   user: {
     modelName: 'users',
+    fields: {
+      image: 'avatarUrl',
+    },
     additionalFields: {
       role: { type: 'string', required: true, defaultValue: 'member', input: false },
       invitedBy: { type: 'string', required: false, input: false },
