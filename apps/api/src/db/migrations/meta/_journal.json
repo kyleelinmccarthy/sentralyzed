@@ -8,6 +8,13 @@
       "when": 1776089143621,
       "tag": "0000_initial_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776183593848,
+      "tag": "0001_unknown_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

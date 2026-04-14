@@ -20,5 +20,6 @@ export const users = pgTable('users', {
   role: roleEnum('role').notNull().default('member'),
   invitedBy: uuid('invited_by').references((): AnyPgColumn => users.id),
   isActive: boolean('is_active').notNull().default(true),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   ...timestamps(),
 })
