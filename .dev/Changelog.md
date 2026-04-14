@@ -14,6 +14,18 @@ FORMAT:
 - Decisions made (reference DEC-### in Decisions.md if logged)
 -->
 
+## 2026-04-14 — Fix TypeScript OOM in Build Pipeline
+
+**Focus:** Build infrastructure — eliminate OOM during `next build` and `tsc`
+
+- Pre-built `@sentral/shared` and `@sentral/api` packages with conditional exports (`types` → source TS, `default` → compiled JS in dist/)
+- Changed API build from no-op echo to `tsc --noCheck` + copy `better-auth.js` (tsc type-checking itself OOMs on the API due to Better Auth's massive generics)
+- Moved `@sentral/api` from `transpilePackages` to `serverExternalPackages` in Next.js config — webpack no longer bundles the entire API, just loads it at runtime
+- Added `typescript: { ignoreBuildErrors: true }` and `eslint: { ignoreDuringBuilds: true }` to `next.config.ts` since type-check/lint run as separate turbo tasks
+- Fixed latent prerender error: Better Auth client needed absolute URL during SSR (was hidden by OOM)
+- Full turbo build now completes in ~9s (previously OOM'd at 4GB+ / 8GB+)
+- Logged learning: L-001 (Better Auth type inference causes tsc OOM)
+
 ## 2026-04-08 — Project Documentation Framework Initialized
 
 **Focus:** Framework setup

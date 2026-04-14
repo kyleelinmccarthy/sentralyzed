@@ -4,12 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app": "./src/app.ts",
-    "./auth": "./src/lib/better-auth.js"
+    "./app": {
+      "types": "./src/app.ts",
+      "default": "./dist/app.js"
+    },
+    "./auth": {
+      "types": "./src/lib/better-auth.d.ts",
+      "default": "./dist/lib/better-auth.js"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "echo 'API build: skipped (consumers run via tsx or are transpiled by Next.js)'",
+    "build": "tsc --noCheck && cp src/lib/better-auth.js dist/lib/better-auth.js",
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "lint": "eslint src/",
@@ -32,7 +38,7 @@
     "better-auth": "^1.6.2",
     "better-call": "^2.0.3",
     "defu": "^6.1.7",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "helmet": "^8.1.0",
     "hono": "^4.7.0",
     "jose": "^6.2.2",
