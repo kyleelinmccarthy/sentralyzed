@@ -14,6 +14,16 @@ FORMAT:
 - Decisions made (reference DEC-### in Decisions.md if logged)
 -->
 
+## 2026-04-21 — Railway Migration Documentation
+
+**Focus:** Document hosting migration from self-hosted Coolify to Railway Pro
+
+- Rewrote `docs/infrastructure.md` with full Railway setup guide (services, networking, env vars, database driver change, deploy workflow, cost breakdown)
+- Preserved retired Coolify setup in a collapsed details section for reference
+- Added DEC-005 (Railway Pro over Vercel for hosting) and DEC-006 (Railway Postgres over Neon)
+- Updated Stack.md infrastructure table to reflect Railway
+- No code changes — documentation only session
+
 ## 2026-04-14 — Fix TypeScript OOM in Build Pipeline
 
 **Focus:** Build infrastructure — eliminate OOM during `next build` and `tsc`

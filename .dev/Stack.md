@@ -86,12 +86,15 @@
 
 ## Infrastructure
 
-| Component | Provider              | Notes                  |
-| --------- | --------------------- | ---------------------- |
-| Hosting   | Coolify (self-hosted) | With Cloudflare Tunnel |
-| Database  | PostgreSQL 16 Alpine  | Docker, port 5433      |
-| Cache     | Redis 7 Alpine        | Docker, port 6379      |
-| CI/CD     | —                     | Via Coolify            |
+| Component   | Provider              | Notes                                              |
+| ----------- | --------------------- | -------------------------------------------------- |
+| Hosting     | Railway (Pro plan)    | Persistent Node.js processes, auto-deploy from Git |
+| Database    | Railway PostgreSQL 16 | Private network, standard TCP connection           |
+| CI/CD       | Railway               | Auto-deploy on push to `main`                      |
+| Local DB    | Docker PostgreSQL 16  | Port 5433 via `docker-compose.dev.yml`             |
+| Local Cache | Docker Redis 7 Alpine | Port 6379 (not used in production)                 |
+
+> **Migration note (2026-04-21):** Moved from Coolify (self-hosted) + Neon to Railway Pro. Database driver changed from `@neondatabase/serverless` (HTTP) to `postgres.js` (TCP). See DEC-005, DEC-006, and `docs/infrastructure.md`.
 
 ## Version Constraints
 

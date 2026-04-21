@@ -60,3 +60,28 @@ TEMPLATE — Copy for each new decision:
   2. **Cookie-based sessions** — Pros: simple revocation, httpOnly security, small cookie size / Cons: requires session store, sticky sessions for scaling
 - **Decision:** Cookie-based sessions with Redis store. Simpler security model — tokens are opaque, revocation is immediate, httpOnly prevents XSS theft.
 - **Consequences:** Session cookie (`sentral_session`) is httpOnly with 7-day expiry. Redis stores session data. Auth middleware validates session on each request.
+
+## DEC-005 — Railway Pro over Vercel for Hosting
+
+- **Date:** 2026-04-21
+- **Status:** Accepted
+- **Context:** Self-hosted Coolify infrastructure retired due to hardware/network issues. Need a new hosting platform that supports the full stack including persistent WebSocket connections (chat, whiteboard Yjs CRDT sync, presence).
+- **Options Considered:**
+  1. **Vercel + Neon** — Pros: excellent Next.js DX, serverless scaling, Neon already integrated / Cons: no WebSocket support (serverless is stateless), would require separate WS host (Railway/Fly) or switching to a managed real-time service (Pusher, PartyKit, Liveblocks), in-memory state lost across invocations, rate limiting broken
+  2. **Railway Pro** — Pros: persistent Node.js processes (WebSocket works as-is), managed Postgres in same private network, single platform for all services, team member support, $20/mo base / Cons: no serverless auto-scaling, single-process model
+  3. **Fly.io** — Pros: edge deployment, persistent processes, Postgres support / Cons: more complex networking, less polished dashboard, similar pricing
+- **Decision:** Railway Pro. WebSocket support with zero code changes to the real-time layer is the decisive factor. All services (Web, API, Postgres) in one project. Pro tier ($20/mo) gives team member access, 32 GB/32 vCPU ceiling, and priority support. Estimated $20–35/mo total.
+- **Consequences:** Migrate from Neon serverless HTTP driver to standard `postgres.js` TCP driver (~5 line change in `db/index.ts`). HTTP and WebSocket servers must share a single port in production (Railway exposes one port per service). Chat real-time, whiteboard presence, and future Yjs CRDT sync all work without architectural changes.
+- **Related:** Supersedes Coolify self-hosted setup. See `docs/infrastructure.md` for full Railway configuration.
+
+## DEC-006 — Railway Postgres over Neon for Database
+
+- **Date:** 2026-04-21
+- **Status:** Accepted
+- **Context:** With hosting moving to Railway, need to decide whether to keep Neon (external serverless Postgres) or use Railway's managed Postgres.
+- **Options Considered:**
+  1. **Keep Neon** — Pros: zero migration effort, already integrated, serverless autoscaling / Cons: external network hop adds latency, Neon HTTP driver not needed in non-serverless context, cold starts on free tier
+  2. **Railway Postgres** — Pros: same private network as API (lower latency), standard TCP connection, no cold starts, backups included, simpler infra (everything in one platform) / Cons: requires driver swap (`@neondatabase/serverless` → `postgres.js`), need to recreate schema and migrate data
+- **Decision:** Railway managed Postgres. Co-located in the same private network as the API service. Standard TCP driver (`postgres.js`) is already a project dependency. All Drizzle schema, queries, and migrations remain unchanged — only the driver initialization in `db/index.ts` changes.
+- **Consequences:** Remove `@neondatabase/serverless` dependency. Update `db/index.ts` to use `postgres` + `drizzle-orm/postgres-js`. Run `db:push` or `db:migrate` against the new Railway Postgres instance. Seed or migrate existing data if needed.
+- **Related:** DEC-005 (Railway hosting decision). See `docs/infrastructure.md` for driver change details.
