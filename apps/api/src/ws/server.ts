@@ -1,5 +1,5 @@
 import { WebSocketServer, type WebSocket } from 'ws'
-import type { IncomingMessage } from 'node:http'
+import type { IncomingMessage, Server } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { getSessionFromHeaders } from '../lib/better-auth.js'
@@ -17,10 +17,21 @@ import { handleMessage } from './handlers.js'
 
 const HEARTBEAT_INTERVAL = 30_000
 
-export function createWebSocketServer(port: number) {
-  const wss = new WebSocketServer({ port })
+// Accepts either a dedicated port (local dev) or an existing HTTP server
+// (production — Railway exposes a single port per service, so WS and HTTP share it).
+export type WsServerOpts = { port: number } | { server: Server }
 
-  console.log(`WebSocket server running on ws://localhost:${port}`)
+export function createWebSocketServer(opts: WsServerOpts) {
+  const wss =
+    'server' in opts
+      ? new WebSocketServer({ server: opts.server })
+      : new WebSocketServer({ port: opts.port })
+
+  if ('port' in opts) {
+    console.log(`WebSocket server running on ws://localhost:${opts.port}`)
+  } else {
+    console.log('WebSocket server attached to existing HTTP server (shared port)')
+  }
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const connId = randomUUID()

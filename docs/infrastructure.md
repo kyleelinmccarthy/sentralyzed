@@ -4,8 +4,8 @@
 
 Sentral runs as a monorepo with three main services:
 
-- **Web** (Next.js 15): Frontend at `app.sentral.com`
-- **API** (Hono.js): Backend at `api.sentral.com` (HTTP + WebSocket)
+- **Web** (Next.js 15): Frontend at `app.sentral.solvretech.com`
+- **API** (Hono.js): Backend at `api.sentral.solvretech.com` (HTTP + WebSocket)
 - **Database**: PostgreSQL 16
 
 ## Hosting: Railway (Pro Plan)
@@ -38,11 +38,11 @@ Hobby plan ($5/mo) exists but is limited to 8 GB RAM / 8 vCPU and doesn't suppor
 
 ### Services
 
-| Railway Service | What it runs                    | Dockerfile            | Public URL           |
-| --------------- | ------------------------------- | --------------------- | -------------------- |
-| **web**         | Next.js 15 standalone           | `apps/web/Dockerfile` | `app.sentral.com`    |
-| **api**         | Hono.js HTTP + WebSocket server | `apps/api/Dockerfile` | `api.sentral.com`    |
-| **postgres**    | Railway managed PostgreSQL 16   | (one-click provision) | Private network only |
+| Railway Service | What it runs                    | Dockerfile            | Public URL                   |
+| --------------- | ------------------------------- | --------------------- | ---------------------------- |
+| **web**         | Next.js 15 standalone           | `apps/web/Dockerfile` | `app.sentral.solvretech.com` |
+| **api**         | Hono.js HTTP + WebSocket server | `apps/api/Dockerfile` | `api.sentral.solvretech.com` |
+| **postgres**    | Railway managed PostgreSQL 16   | (one-click provision) | Private network only         |
 
 ### Networking
 
@@ -50,7 +50,7 @@ The API service handles both HTTP and WebSocket traffic on a single port. Railwa
 
 - **Web** → communicates with **API** via public URL or Railway's private network
 - **API** → communicates with **Postgres** via Railway's private network (no public exposure)
-- **Clients** → connect to WebSocket at `wss://api.sentral.com` (same origin as REST API)
+- **Clients** → connect to WebSocket at `wss://api.sentral.solvretech.com` (same origin as REST API)
 
 ### Environment Variables
 
@@ -61,21 +61,24 @@ DATABASE_URL=<railway-postgres-connection-string>
 PORT=3001
 NODE_ENV=production
 ENABLE_WS=true
-WS_PORT=3001                                    # Same port as HTTP in production
-FRONTEND_URL=https://app.sentral.com
+# Omit WS_PORT in production — WS attaches to the HTTP server on PORT (single-port mode)
+FRONTEND_URL=https://app.sentral.solvretech.com
 SESSION_SECRET=<secret>
+BETTER_AUTH_SECRET=<secret>
+BETTER_AUTH_URL=https://app.sentral.solvretech.com
 GOOGLE_CLIENT_ID=<id>
 GOOGLE_CLIENT_SECRET=<secret>
-GOOGLE_CALLBACK_URL=https://api.sentral.com/auth/google/callback
+GOOGLE_CALLBACK_URL=https://api.sentral.solvretech.com/auth/google/callback
 ENCRYPTION_KEY=<key>
-COOKIE_DOMAIN=.sentral.com
+COOKIE_DOMAIN=.sentral.solvretech.com
 ```
 
 **Web service:**
 
 ```
-NEXT_PUBLIC_API_URL=https://api.sentral.com
-NEXT_PUBLIC_WS_URL=wss://api.sentral.com
+NEXT_PUBLIC_API_URL=https://api.sentral.solvretech.com
+NEXT_PUBLIC_WS_URL=wss://api.sentral.solvretech.com
+NEXT_PUBLIC_APP_URL=https://app.sentral.solvretech.com
 ```
 
 ### Deploy Workflow
@@ -88,8 +91,10 @@ NEXT_PUBLIC_WS_URL=wss://api.sentral.com
 ### Custom Domains
 
 1. In Railway dashboard → service → Settings → Custom Domain
-2. Add `app.sentral.com` to web service, `api.sentral.com` to API service
-3. Railway provides CNAME targets — add these as DNS records in your domain registrar
+2. Add `app.sentral.solvretech.com` to web service, `api.sentral.solvretech.com` to API service
+3. Railway provides CNAME targets — add these as DNS records in the `solvretech.com` registrar:
+   - `api.sentral` → `<railway-api-cname-target>`
+   - `app.sentral` → `<railway-web-cname-target>`
 4. SSL certificates are provisioned automatically
 
 ## Database: Railway PostgreSQL

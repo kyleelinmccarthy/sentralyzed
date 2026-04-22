@@ -19,13 +19,12 @@
 | hono                | ^4.7.0   | HTTP framework                  | No      |
 | @hono/node-server   | ^1.14.0  | Node.js adapter for Hono        | No      |
 | @hono/zod-validator | ^0.7.6   | Request validation middleware   | No      |
-| drizzle-orm         | ^0.38.0  | PostgreSQL ORM                  | No      |
-| postgres            | ^3.4.0   | PostgreSQL driver (postgres.js) | No      |
+| drizzle-orm         | ^0.45.2  | PostgreSQL ORM                  | No      |
+| postgres            | ^3.4.5   | PostgreSQL driver (postgres.js) | No      |
 | argon2              | ^0.44.0  | Password hashing                | No      |
 | cookie              | ^1.1.1   | Cookie parsing/serialization    | No      |
 | googleapis          | ^171.4.0 | Google OAuth integration        | No      |
 | helmet              | ^8.1.0   | Security headers                | No      |
-| ioredis             | ^5.10.1  | Redis client (sessions/caching) | No      |
 | ws                  | ^8.20.0  | WebSocket server                | No      |
 | zod                 | ^3.24.0  | Schema validation               | No      |
 
@@ -105,7 +104,9 @@
 
 ## Upgrade Log
 
-| Date | Package | From | To  | Notes |
-| ---- | ------- | ---- | --- | ----- |
+| Date       | Package                  | From    | To        | Notes                                        |
+| ---------- | ------------------------ | ------- | --------- | -------------------------------------------- |
+| 2026-04-22 | @neondatabase/serverless | ^0.10.0 | (removed) | Replaced by postgres.js for Railway TCP conn |
+| 2026-04-22 | postgres                 | (new)   | ^3.4.5    | Standard pg TCP driver for Railway Postgres  |
 
 <!-- Track major upgrades here -->

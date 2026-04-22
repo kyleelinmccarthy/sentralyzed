@@ -14,6 +14,20 @@ FORMAT:
 - Decisions made (reference DEC-### in Decisions.md if logged)
 -->
 
+## 2026-04-22 — Railway Migration Implementation
+
+**Focus:** Implement code changes required for Coolify/Vercel → Railway migration
+
+- Swapped DB driver from `@neondatabase/serverless` (HTTP) to `postgres@^3.4.5` (TCP) in `apps/api/src/db/index.ts` and `apps/api/src/db/seed/seed-data.ts`; Drizzle schema and queries unchanged
+- Refactored `apps/api/src/ws/server.ts` to accept `{ port } | { server }`, enabling WS to attach to an existing HTTP server for Railway's single-port model (SRP — strategy decided by caller)
+- Added TDD test `apps/api/src/__tests__/ws-server.test.ts` covering both port modes, written before the refactor
+- Updated `apps/api/src/index.ts` to derive WS mode from env: `WS_PORT === PORT` (or absent) → attach to HTTP server; different `WS_PORT` → separate port for local dev (KISS, no new env vars)
+- Added `output: 'standalone'` + `outputFileTracingRoot` to `apps/web/next.config.ts` so the Dockerfile's standalone copy actually has something to copy
+- Removed `VERCEL_URL` dead-code branch from `apps/web/src/lib/auth-client.ts`
+- Updated `.env.example` with `NEXT_PUBLIC_WS_URL`, `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_SECRET`; cleaned Vercel comment; documented WS port behavior
+- Updated `docs/infrastructure.md` with actual domain (`sentral.solvretech.com`)
+- Updated `.dev/Stack.md` deps table and added Upgrade Log entries
+
 ## 2026-04-21 — Railway Migration Documentation
 
 **Focus:** Document hosting migration from self-hosted Coolify to Railway Pro
