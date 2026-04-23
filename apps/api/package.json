@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noCheck && cp src/lib/better-auth.js dist/lib/better-auth.js",
+    "build": "tsup",
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "lint": "eslint src/",
@@ -53,6 +53,7 @@
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.0.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",

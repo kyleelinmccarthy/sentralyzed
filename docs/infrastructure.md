@@ -4,7 +4,7 @@
 
 Sentral runs as a monorepo with three main services:
 
-- **Web** (Next.js 15): Frontend at `app.sentral.solvretech.com`
+- **Web** (Next.js 15): Frontend at `sentral.solvretech.com`
 - **API** (Hono.js): Backend at `api.sentral.solvretech.com` (HTTP + WebSocket)
 - **Database**: PostgreSQL 16
 
@@ -40,9 +40,11 @@ Hobby plan ($5/mo) exists but is limited to 8 GB RAM / 8 vCPU and doesn't suppor
 
 | Railway Service | What it runs                    | Dockerfile            | Public URL                   |
 | --------------- | ------------------------------- | --------------------- | ---------------------------- |
-| **web**         | Next.js 15 standalone           | `apps/web/Dockerfile` | `app.sentral.solvretech.com` |
+| **web**         | Next.js 15 standalone           | `apps/web/Dockerfile` | `sentral.solvretech.com`     |
 | **api**         | Hono.js HTTP + WebSocket server | `apps/api/Dockerfile` | `api.sentral.solvretech.com` |
 | **postgres**    | Railway managed PostgreSQL 16   | (one-click provision) | Private network only         |
+
+**Cookie scope note:** `COOKIE_DOMAIN=.sentral.solvretech.com` covers both the web app (`sentral.solvretech.com`) and the API (`api.sentral.solvretech.com`) because the leading dot matches the parent domain itself as well as all subdomains.
 
 ### Networking
 
@@ -62,10 +64,10 @@ PORT=3001
 NODE_ENV=production
 ENABLE_WS=true
 # Omit WS_PORT in production — WS attaches to the HTTP server on PORT (single-port mode)
-FRONTEND_URL=https://app.sentral.solvretech.com
+FRONTEND_URL=https://sentral.solvretech.com
 SESSION_SECRET=<secret>
 BETTER_AUTH_SECRET=<secret>
-BETTER_AUTH_URL=https://app.sentral.solvretech.com
+BETTER_AUTH_URL=https://sentral.solvretech.com
 GOOGLE_CLIENT_ID=<id>
 GOOGLE_CLIENT_SECRET=<secret>
 GOOGLE_CALLBACK_URL=https://api.sentral.solvretech.com/auth/google/callback
@@ -78,7 +80,7 @@ COOKIE_DOMAIN=.sentral.solvretech.com
 ```
 NEXT_PUBLIC_API_URL=https://api.sentral.solvretech.com
 NEXT_PUBLIC_WS_URL=wss://api.sentral.solvretech.com
-NEXT_PUBLIC_APP_URL=https://app.sentral.solvretech.com
+NEXT_PUBLIC_APP_URL=https://sentral.solvretech.com
 ```
 
 ### Deploy Workflow
@@ -90,12 +92,19 @@ NEXT_PUBLIC_APP_URL=https://app.sentral.solvretech.com
 
 ### Custom Domains
 
-1. In Railway dashboard → service → Settings → Custom Domain
-2. Add `app.sentral.solvretech.com` to web service, `api.sentral.solvretech.com` to API service
-3. Railway provides CNAME targets — add these as DNS records in the `solvretech.com` registrar:
-   - `api.sentral` → `<railway-api-cname-target>`
-   - `app.sentral` → `<railway-web-cname-target>`
-4. SSL certificates are provisioned automatically
+1. In Railway dashboard → **service** → **Settings** → scroll to **Public Networking** → click **+ Custom Domain**
+   - (If the button is missing, deploy the service at least once first — Railway gates it until there's a successful build)
+2. Add `sentral.solvretech.com` to web service, `api.sentral.solvretech.com` to API service
+3. Railway provides **both a CNAME and a TXT record** per domain (both are required — TXT verification was added late 2025). Add these to the `solvretech.com` DNS:
+
+   | Type  | Name                   | Value                        |
+   | ----- | ---------------------- | ---------------------------- |
+   | CNAME | `sentral`              | `<railway-web-cname-target>` |
+   | TXT   | `_railway.sentral`     | `<railway-web-txt-value>`    |
+   | CNAME | `api.sentral`          | `<railway-api-cname-target>` |
+   | TXT   | `_railway.api.sentral` | `<railway-api-txt-value>`    |
+
+4. Wait for Railway to verify (green checkmark) — SSL certificates provision automatically once verified
 
 ## Database: Railway PostgreSQL
 

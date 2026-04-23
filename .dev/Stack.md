@@ -30,12 +30,13 @@
 
 ### API Dev Dependencies
 
-| Package     | Version | Purpose                                    |
-| ----------- | ------- | ------------------------------------------ |
-| drizzle-kit | ^0.30.0 | Migration generation and studio            |
-| tsx         | ^4.19.0 | TypeScript execution (dev server, scripts) |
-| vitest      | ^3.0.0  | Unit testing                               |
-| eslint      | ^9.0.0  | Linting                                    |
+| Package     | Version  | Purpose                                                  |
+| ----------- | -------- | -------------------------------------------------------- |
+| drizzle-kit | ^0.31.10 | Migration generation and studio                          |
+| tsup        | ^8.5.1   | Build tool for API (esbuild; rewrites ESM `.js` imports) |
+| tsx         | ^4.19.0  | TypeScript execution (dev server, scripts)               |
+| vitest      | ^3.0.0   | Unit testing                                             |
+| eslint      | ^9.0.0   | Linting                                                  |
 
 ## Web Dependencies (`apps/web`)
 
@@ -104,9 +105,10 @@
 
 ## Upgrade Log
 
-| Date       | Package                  | From    | To        | Notes                                        |
-| ---------- | ------------------------ | ------- | --------- | -------------------------------------------- |
-| 2026-04-22 | @neondatabase/serverless | ^0.10.0 | (removed) | Replaced by postgres.js for Railway TCP conn |
-| 2026-04-22 | postgres                 | (new)   | ^3.4.5    | Standard pg TCP driver for Railway Postgres  |
+| Date       | Package                  | From    | To        | Notes                                                                 |
+| ---------- | ------------------------ | ------- | --------- | --------------------------------------------------------------------- |
+| 2026-04-22 | @neondatabase/serverless | ^0.10.0 | (removed) | Replaced by postgres.js for Railway TCP conn                          |
+| 2026-04-22 | postgres                 | (new)   | ^3.4.5    | Standard pg TCP driver for Railway Postgres                           |
+| 2026-04-22 | tsup                     | (new)   | ^8.5.1    | Replaces tsc for API build; fixes ESM prod crash (see L-003, DEC-007) |
 
 <!-- Track major upgrades here -->

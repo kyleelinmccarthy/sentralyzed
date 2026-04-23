@@ -74,6 +74,24 @@ TEMPLATE — Copy for each new decision:
 - **Consequences:** Migrate from Neon serverless HTTP driver to standard `postgres.js` TCP driver (~5 line change in `db/index.ts`). HTTP and WebSocket servers must share a single port in production (Railway exposes one port per service). Chat real-time, whiteboard presence, and future Yjs CRDT sync all work without architectural changes.
 - **Related:** Supersedes Coolify self-hosted setup. See `docs/infrastructure.md` for full Railway configuration.
 
+## DEC-007 — tsup (esbuild) over tsc for the API build
+
+- **Date:** 2026-04-22
+- **Status:** Accepted
+- **Context:** API crashed in production with `ERR_MODULE_NOT_FOUND` on extensionless relative imports in `dist/`. `tsc` with `moduleResolution: "bundler"` doesn't rewrite import specifiers, but Node ESM requires explicit `.js`. See L-003. A fix was needed that didn't require editing 86 source files.
+- **Options Considered:**
+  1. **Post-build rewrite script** — Pros: tiny diff, keeps tsc / Cons: adds a bespoke script to maintain; doesn't address tsc's OOM (L-001) or emit speed
+  2. **Add `.js` to every source import + flip to `nodenext`** — Pros: "canonical" fix; enforced going forward / Cons: touches 86 files; doesn't solve OOM; future imports still need manual attention
+  3. **tsup (esbuild) bundle + splitting** — Pros: rewrites imports correctly; ~50× faster than tsc; sidesteps L-001 OOM (esbuild skips type-checking); `splitting: true` preserves `auth` singleton across `@sentral/api/app` and `@sentral/api/auth` entries / Cons: new devDep; emits chunk files alongside entries; type-check still needs a separate tsc pass
+- **Decision:** tsup in bundle+splitting mode. The singleton concern with naive per-entry bundling is resolved by esbuild's chunk splitting — `lib/better-auth.js` is hoisted into a chunk imported by both `dist/app.js` and `dist/lib/better-auth.js`, so consumers importing from both exports share one `auth` instance. Per-file transpile mode (`bundle: false`) was tested and rejected because tsup does not rewrite specifiers in that mode.
+- **Consequences:**
+  - `apps/api/package.json` `build` script is now `tsup`, driven by `apps/api/tsup.config.ts`
+  - `dist/` now contains entry files (`index.js`, `app.js`, `ws-standalone.js`, `lib/better-auth.js`) + `chunk-*.js` shared modules; the `exports` field continues to point at the entry files
+  - The `tsc --noCheck` + `cp better-auth.js` workaround from the 2026-04-14 session is removed — esbuild processes the `.js` file natively as an entry
+  - `npm run type-check` still uses `tsc --noEmit` (separate from build), so L-001's OOM constraints for type-checking remain relevant; only the _emit_ path has changed
+  - `@sentral/shared` continues to build with `tsc` — it's small enough, doesn't hit L-001, and only needed one source fix for its extensionless import
+- **Related:** L-001, L-003, `apps/api/tsup.config.ts`
+
 ## DEC-006 — Railway Postgres over Neon for Database
 
 - **Date:** 2026-04-21

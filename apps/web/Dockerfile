@@ -10,6 +10,7 @@ RUN npm ci --workspace=@sentral/web --workspace=@sentral/shared --include-worksp
 
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
+RUN npm run build --workspace=@sentral/shared
 RUN npm run build --workspace=@sentral/web
 
 FROM base AS runner

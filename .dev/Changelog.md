@@ -14,6 +14,26 @@ FORMAT:
 - Decisions made (reference DEC-### in Decisions.md if logged)
 -->
 
+## 2026-04-22 — Fix API prod crash: swap tsc for tsup to rewrite ESM imports
+
+**Focus:** Unblock Railway — API container crashed on boot with `ERR_MODULE_NOT_FOUND` for relative imports
+
+- Swapped `apps/api` build from `tsc --noCheck` + manual `cp` of `better-auth.js` to `tsup` in bundle+splitting mode (`apps/api/tsup.config.ts`)
+- tsup/esbuild rewrites relative imports to include `.js` at emit time, fixing the production crash where Node ESM rejected `from './_helpers'` in compiled output
+- `splitting: true` hoists `lib/better-auth.js` into a shared chunk so `dist/app.js` and `dist/lib/better-auth.js` (both exported via `@sentral/api/app` and `@sentral/api/auth`) share a single `auth` singleton instead of each shipping its own
+- Side benefit: esbuild never type-checks, so the `--noCheck` workaround for L-001's tsc OOM is no longer load-bearing for the build path (type-check still runs tsc separately)
+- Fixed missing `.js` extension in [packages/shared/src/validators/poll.ts:2](packages/shared/src/validators/poll.ts#L2) — the only offender in `packages/shared` source; all other files were already correct
+- Added `tsup ^8.5.1` to `apps/api` devDependencies
+- Logged L-003 and DEC-007
+- Verified: `node apps/api/dist/index.js` boots cleanly (HTTP + WS server start, Better Auth initializes)
+
+## 2026-04-22 — Fix web Docker build: missing shared package compile step
+
+**Focus:** Unblock the web Docker build failing on `@sentral/shared/types/*` resolution
+
+- Added `RUN npm run build --workspace=@sentral/shared` before the web build in `apps/web/Dockerfile` so the `dist/` output referenced by the package's `exports` field exists at module-resolution time (the API Dockerfile already did this)
+- Logged L-002 in Learnings.md
+
 ## 2026-04-22 — Railway Migration Implementation
 
 **Focus:** Implement code changes required for Coolify/Vercel → Railway migration

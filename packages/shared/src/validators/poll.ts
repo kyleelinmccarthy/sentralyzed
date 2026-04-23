@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { POLL_CONTEXT_TYPES } from '../types/poll'
+import { POLL_CONTEXT_TYPES } from '../types/poll.js'
 
 export const pollContextTypeSchema = z.enum(POLL_CONTEXT_TYPES)
 
